@@ -1,0 +1,56 @@
+URL: https://www.alensa.cz/roztok-gelone-360-ml
+TITLE: Roztok Gelone 360 ml | Alensa.cz
+
+== HEADINGS ==
+  <h1> Roztok Gelone 360 ml
+  <h2> Výhodné balíčky
+  <h2> Roztok na kontaktní čočky Gelone
+  <h2> Parametry produktu - Roztok Gelone 360 ml
+  <h2> Informace o výrobci
+  <h2> Hodnocení
+  <h2> Komentáře (16)
+  <h2> Naše produkty
+  <h2> Informace
+  <h2> Newsletter
+  <h2> Zákaznický servis
+  <h2> Alensa
+  <h2> Optiky Alensa
+  <h2> Partnerské optiky
+
+== BUTTONS ==
+  [Přeskočit navigaci]   class='skip-navigation-btn btn btn-sm btn-primary'
+  [Přihlásit se]   class='login-register-link show-login-dialog'
+  [Zobrazit košík]   class='btn btn-xs btn-tercialy go-to-basket-btn'
+  [Vložit do košíku]   class='ajax btn btn-block btn-xxl btn-multiple-icons btn-tercialy d'
+  [Informace o výrobci]   class='product-properties-title'
+  [Play]   class='lyt-playbtn lty-playbtn'
+  [Zeptat se]   class='btn btn-secondary btn-sm comments-box-btn comments-box-toggl'
+  [Nahlásit komentář]   class='comments-actual-comment-report'
+  [Nahlásit komentář]   class='comments-actual-comment-report'
+  [Nahlásit komentář]   class='comments-actual-comment-report'
+  [Nahlásit komentář]   class='comments-actual-comment-report'
+  [Nahlásit komentář]   class='comments-actual-comment-report'
+  [Nahlásit komentář]   class='comments-actual-comment-report'
+  [Přihlásit k odběru]   id='frm-1129565699-doi1221487161Form-save' name='save' class='button btn btn-block double-optin-subscribe btn- btn-seconda'
+  [Děkuji, ale nemám zájem o výhody]   id='frm-1129565699-doi1221487161Form-cancel' name='cancel' class='button ajax double-optin-decline'
+  [Nastavení cookies]   class='cookie-settings'
+  [Rezervovat měření zraku]   class='btn btn-block btn-sm btn-primary'
+
+== INPUTS / SELECTS ==
+  <input>  type='text' id='frm-1076134258-simpleForm-phrase' name='phrase' placeholder='Napište, co hledáte...'
+  <select>  id='frm-1690943241-commonAttributesForm743-primary-amount' name='primary[amount]'
+  <input>  type='text' id='frm-1129565699-doi1221487161Form-email' name='email' placeholder='jan.novak@seznam.cz'
+  <input>  type='submit' id='frm-1129565699-doi1221487161Form-save' name='save'
+  <input>  type='submit' id='frm-1129565699-doi1221487161Form-cancel' name='cancel'
+
+== PRICES ON PAGE (top 20) ==
+  0 Kč
+  199 Kč
+  99 Kč
+  379 Kč
+  558 Kč
+  20 Kč
+  628 Kč
+  159 Kč
+  1 200 Kč
+  55 Kč
