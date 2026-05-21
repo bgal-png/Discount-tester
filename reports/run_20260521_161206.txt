@@ -1,0 +1,6 @@
+Run 20260521_161206 — alensa.cz
+Summary: {'PASS': 2, 'FAIL': 0, 'NOT_APPLIED': 0, 'ERROR': 1, 'SKIPPED_EXPIRED': 0}
+
+[PASS       ] gel26care       (16.5s) — observed 20.1% vs expected 20.0% (delta 0.10pp ≤ 1.0pp)
+[PASS       ] gel26care       (16.8s) — observed 20.2% vs expected 20.0% (delta 0.20pp ≤ 1.0pp)
+[ERROR      ] gel26care       (4.3s) — TargetClosedError: Page.wait_for_timeout: Target page, context or browser has been closed

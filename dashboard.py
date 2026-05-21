@@ -108,6 +108,15 @@ def render_diagnostics(results: list[dict], key_prefix: str = "diag") -> None:
                         st.image(str(shot_path), use_container_width=True)
 
 
+def _product_slug(url: str) -> str:
+    """Take a product URL and return just the slug, e.g.
+    'https://www.alensa.cz/roztok-gelone-360-ml' -> 'roztok-gelone-360-ml'.
+    """
+    if not url:
+        return ""
+    return url.rstrip("/").rsplit("/", 1)[-1]
+
+
 def results_dataframe(report: dict) -> pd.DataFrame:
     rows = []
     for r in report.get("results", []):
@@ -115,7 +124,7 @@ def results_dataframe(report: dict) -> pd.DataFrame:
             "": STATUS_COLOR.get(r["status"], ""),
             "status": r["status"],
             "code": r["code"],
-            "name": r["name"],
+            "product": _product_slug(r.get("product_url", "")),
             "expected": f"{r['expected_value']}{'%' if r['expected_type'] == 'percentage' else ' CZK'}",
             "observed %": r.get("observed_discount_pct"),
             "baseline CZK": r.get("baseline_czk"),
@@ -125,6 +134,7 @@ def results_dataframe(report: dict) -> pd.DataFrame:
             "negative": r.get("negative_status"),
             "duration s": r.get("duration_s"),
             "detail": r.get("detail", ""),
+            "name": r["name"],
         })
     return pd.DataFrame(rows)
 
