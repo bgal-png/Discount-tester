@@ -7,6 +7,8 @@ venv/
 # Keep diagnostic PNGs/HTML out of git (large, noisy, regenerable).
 reports/probe_*.png
 reports/probe_*.html
+reports/listing_*.png
+reports/listing_*.html
 reports/run_*.png
 reports/dc_code_debug.*
 reports/cart_with_code.html
