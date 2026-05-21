@@ -48,6 +48,13 @@ class Discount:
     active: bool = True
     tolerance_pct: float = 1.0  # absolute percentage-point tolerance (e.g. 1.0 = ±1pp)
     test_product_url: Optional[str] = None
+    non_matching_product_url: Optional[str] = None  # negative test (optional)
+    expected_flash_contains: list[str] = field(default_factory=list)  # all must appear
+    description: str = ""                  # internal note from backend
+    expires_at: Optional[str] = None       # ISO date "YYYY-MM-DD"; runner skips past
+    combination_forbidden: bool = False    # informational
+    min_items: Optional[int] = None        # informational
+    usage_limit: Optional[int] = None      # informational
     applies_to: AppliesTo = field(default_factory=AppliesTo)
     conditions: Conditions = field(default_factory=Conditions)
     notes: str = ""
@@ -106,6 +113,28 @@ def _parse_discount(d: dict, idx: int) -> Discount:
     if not isinstance(tol, (int, float)) or tol < 0:
         raise ConfigError(f"{where}: tolerance_pct must be a non-negative number")
 
+    flash_raw = d.get("expected_flash_contains", [])
+    if isinstance(flash_raw, str):
+        flash_raw = [flash_raw]  # convenience: allow a single string
+    if not isinstance(flash_raw, list) or not all(isinstance(x, str) for x in flash_raw):
+        raise ConfigError(f"{where}: expected_flash_contains must be a string or list of strings")
+
+    expires_at = d.get("expires_at")
+    if expires_at is not None:
+        import datetime
+        try:
+            datetime.date.fromisoformat(expires_at)
+        except (TypeError, ValueError):
+            raise ConfigError(f"{where}: expires_at must be ISO date 'YYYY-MM-DD', got {expires_at!r}")
+
+    min_items = d.get("min_items")
+    if min_items is not None and (not isinstance(min_items, int) or min_items < 0):
+        raise ConfigError(f"{where}: min_items must be a non-negative integer")
+
+    usage_limit = d.get("usage_limit")
+    if usage_limit is not None and (not isinstance(usage_limit, int) or usage_limit < 0):
+        raise ConfigError(f"{where}: usage_limit must be a non-negative integer")
+
     return Discount(
         name=str(name),
         code=str(code),
@@ -114,6 +143,13 @@ def _parse_discount(d: dict, idx: int) -> Discount:
         active=bool(d.get("active", True)),
         tolerance_pct=float(tol),
         test_product_url=d.get("test_product_url"),
+        non_matching_product_url=d.get("non_matching_product_url"),
+        expected_flash_contains=flash_raw,
+        description=str(d.get("description", "")),
+        expires_at=expires_at,
+        combination_forbidden=bool(d.get("combination_forbidden", False)),
+        min_items=min_items,
+        usage_limit=usage_limit,
         applies_to=applies,
         conditions=cond,
         notes=str(d.get("notes", "")),

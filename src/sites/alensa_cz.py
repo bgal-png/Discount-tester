@@ -46,6 +46,9 @@ def open_homepage(page: Page, screenshot_path: Path | None = None,
     When dc_code is supplied, the site captures the code into session state on
     first page load — any product added afterwards inherits the discount in
     the cart. This is much simpler than the cart-side form-fill flow.
+
+    Call read_pending_flash(safe) right after to capture the discount-applied
+    modal text before it gets dismissed by subsequent navigation.
     """
     safe = SafePage(page, SafetyConfig(allowed_host=HOST))
     url = BASE_URL + (f"?dc_code={dc_code}" if dc_code else "")
@@ -55,6 +58,31 @@ def open_homepage(page: Page, screenshot_path: Path | None = None,
         screenshot_path.parent.mkdir(parents=True, exist_ok=True)
         page.screenshot(path=str(screenshot_path), full_page=False)
     return safe
+
+
+def read_applied_coupon_info(safe: SafePage) -> Optional[str]:
+    """Read the persistent 'applied coupon' chip on the cart page.
+
+    Returns text like "Slevový kód: gel26care (-20%)", or None if no chip is
+    present (meaning no coupon was applied). Must be called when on the cart
+    page (/nakup/kosik/).
+    """
+    page = safe.page
+    selectors = [
+        "#snippet--couponCode .coupon-code-text",
+        "#snippet--basketCouponDelivery .basket-coupon-info",
+    ]
+    for sel in selectors:
+        loc = page.locator(sel).first
+        try:
+            if loc.count() > 0 and loc.is_visible(timeout=500):
+                text = loc.inner_text(timeout=1000)
+                cleaned = re.sub(r"\s+", " ", text).strip()
+                if cleaned:
+                    return cleaned
+        except Exception:
+            continue
+    return None
 
 
 def accept_cookies(safe: SafePage, timeout_ms: int = 5000) -> bool:

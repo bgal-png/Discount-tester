@@ -20,7 +20,7 @@ import argparse
 import json
 import time
 from dataclasses import asdict, dataclass, field
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 from typing import Optional
 
@@ -29,6 +29,12 @@ from playwright.sync_api import sync_playwright, Playwright, BrowserContext
 from src.config import load_config, Discount
 from src.sites import alensa_cz
 from src.safety import SafetyViolation
+
+
+@dataclass
+class MeasureWithCode:
+    total: float
+    flash_text: Optional[str]
 
 
 @dataclass
@@ -43,7 +49,11 @@ class DiscountTestResult:
     observed_total_czk: Optional[float] = None
     observed_discount_czk: Optional[float] = None
     observed_discount_pct: Optional[float] = None
-    status: str = "ERROR"     # PASS | FAIL | NOT_APPLIED | ERROR
+    flash_text: Optional[str] = None
+    flash_check: Optional[str] = None        # "ok" | "missing:<phrase>" | "no_flash" | None
+    negative_status: Optional[str] = None    # PASS_NOT_APPLIED | LEAKED | SKIPPED | ERROR
+    negative_detail: Optional[str] = None
+    status: str = "ERROR"     # PASS | FAIL | NOT_APPLIED | ERROR | SKIPPED_EXPIRED
     detail: str = ""
     duration_s: float = 0.0
 
@@ -67,17 +77,40 @@ def measure_baseline(p: Playwright, product_url: str, headed: bool) -> float:
 
 
 def measure_with_code(p: Playwright, product_url: str, code: str,
-                      headed: bool) -> float:
-    """Apply the code via homepage URL param, then add product, then read cart."""
+                      headed: bool) -> MeasureWithCode:
+    """Apply the code via homepage URL param, then add product, then on the
+    cart page read both the total and the persistent applied-coupon chip."""
     ctx = new_context(p, headed)
     try:
         page = ctx.new_page()
         safe = alensa_cz.open_homepage(page, dc_code=code)
         alensa_cz.add_to_cart(safe, product_url)
         alensa_cz.go_to_cart(safe)
-        return alensa_cz.read_cart_total(safe)
+        total = alensa_cz.read_cart_total(safe)
+        chip = alensa_cz.read_applied_coupon_info(safe)
+        return MeasureWithCode(total=total, flash_text=chip)
     finally:
         ctx.close()
+
+
+def check_flash(expected: list[str], observed: Optional[str]) -> str:
+    """Return 'ok' if all expected substrings are in observed; else describe gap."""
+    if not expected:
+        return "skipped"  # nothing to check
+    if not observed:
+        return "no_flash"
+    obs_lc = observed.lower()
+    missing = [phrase for phrase in expected if phrase.lower() not in obs_lc]
+    return "ok" if not missing else f"missing: {missing}"
+
+
+def is_expired(d: Discount, today: date) -> bool:
+    if not d.expires_at:
+        return False
+    try:
+        return date.fromisoformat(d.expires_at) < today
+    except ValueError:
+        return False
 
 
 def classify(d: Discount, baseline: float, observed_total: float) -> tuple[str, str]:
@@ -118,12 +151,51 @@ def run_one(p: Playwright, d: Discount, baseline: float, headed: bool
     )
     t0 = time.time()
     try:
-        observed = measure_with_code(p, d.test_product_url, d.code, headed)
-        res.observed_total_czk = observed
-        res.observed_discount_czk = round(baseline - observed, 2)
+        m = measure_with_code(p, d.test_product_url, d.code, headed)
+        res.observed_total_czk = m.total
+        res.observed_discount_czk = round(baseline - m.total, 2)
         if baseline:
             res.observed_discount_pct = round(100 * res.observed_discount_czk / baseline, 2)
-        res.status, res.detail = classify(d, baseline, observed)
+        res.flash_text = m.flash_text
+        res.flash_check = check_flash(d.expected_flash_contains, m.flash_text)
+        res.status, res.detail = classify(d, baseline, m.total)
+
+        # If the primary test passed but flash text is missing/wrong, downgrade.
+        if res.status == "PASS" and res.flash_check not in (None, "ok", "skipped"):
+            res.status = "FAIL"
+            res.detail = f"{res.detail}; flash {res.flash_check}"
+
+        # Optional negative test.
+        if d.non_matching_product_url:
+            try:
+                neg = measure_with_code(p, d.non_matching_product_url, d.code, headed)
+                # On non-matching product, expect total == baseline of that product
+                # (i.e. no discount). We don't have its baseline — but if the
+                # subtotal decreased noticeably we know the code leaked.
+                # Conservative check: any drop > 0.5% counts as leak.
+                neg_baseline = measure_baseline(p, d.non_matching_product_url, headed)
+                leak = neg_baseline - neg.total
+                leak_pct = 100 * leak / neg_baseline if neg_baseline else 0
+                if leak_pct > 0.5:
+                    res.negative_status = "LEAKED"
+                    res.negative_detail = (
+                        f"{d.non_matching_product_url} dropped {leak} CZK "
+                        f"({leak_pct:.1f}%) when code applied; restriction not enforced"
+                    )
+                    res.status = "FAIL"
+                    res.detail = f"{res.detail}; NEGATIVE: {res.negative_detail}"
+                else:
+                    res.negative_status = "PASS_NOT_APPLIED"
+                    res.negative_detail = (
+                        f"{d.non_matching_product_url}: no discount applied "
+                        f"(baseline {neg_baseline} vs with-code {neg.total})"
+                    )
+            except Exception as e:
+                res.negative_status = "ERROR"
+                res.negative_detail = f"{type(e).__name__}: {e}"
+        else:
+            res.negative_status = "SKIPPED"
+
     except SafetyViolation as e:
         res.status, res.detail = "ERROR", f"SAFETY: {e}"
     except Exception as e:
@@ -179,8 +251,19 @@ def main() -> None:
                 print(f"           ERROR measuring baseline: {e}")
                 baselines[url] = float("nan")
 
+        today = date.today()
         # Each active discount.
         for d in active:
+            if is_expired(d, today):
+                print(f"[skip] {d.code} expired {d.expires_at}")
+                results.append(DiscountTestResult(
+                    name=d.name, code=d.code, product_url=d.test_product_url,
+                    expected_type=d.discount_type, expected_value=d.value,
+                    tolerance_pct=d.tolerance_pct,
+                    status="SKIPPED_EXPIRED",
+                    detail=f"expired {d.expires_at}",
+                ))
+                continue
             print(f"[test] {d.code}  ({d.name})")
             baseline = baselines[d.test_product_url]
             if baseline != baseline:  # NaN
@@ -200,6 +283,7 @@ def main() -> None:
         "FAIL": sum(1 for r in results if r.status == "FAIL"),
         "NOT_APPLIED": sum(1 for r in results if r.status == "NOT_APPLIED"),
         "ERROR": sum(1 for r in results if r.status == "ERROR"),
+        "SKIPPED_EXPIRED": sum(1 for r in results if r.status == "SKIPPED_EXPIRED"),
     }
     out = {
         "timestamp": ts,

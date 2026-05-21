@@ -3,13 +3,28 @@
   "currency": "CZK",
   "discounts": [
     {
-      "name": "Gelone 20% off (roztoky a kapky)",
+      "name": "Gelone contact solutions and drops - 20 %",
       "code": "gel26care",
+      "description": "Stacey - Gelone Voucher 2026. 20 % off Gelone solutions and drops.",
       "active": true,
+
       "discount_type": "percentage",
       "value": 20,
       "tolerance_pct": 1.0,
+
       "test_product_url": "https://www.alensa.cz/roztok-gelone-360-ml",
+      "non_matching_product_url": null,
+
+      "expected_flash_contains": [
+        "gel26care",
+        "-20%"
+      ],
+
+      "expires_at": null,
+      "usage_limit": null,
+      "combination_forbidden": true,
+      "min_items": null,
+
       "applies_to": {
         "brand": "Gelone",
         "product_type": "solutions"
@@ -18,7 +33,7 @@
         "min_basket_czk": null,
         "delivery_method": null
       },
-      "notes": "User-supplied calibration code. Site shows 'Gratulujeme! 20% sleva na roztoky a oční kapky Gelone'."
+      "notes": "Restricted in backend to 3 product groups (Gelone roztoky/kapky/etc) via 'Included items'. All customers, infinite uses, no expiry as of import."
     }
   ]
 }
