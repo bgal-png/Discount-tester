@@ -79,14 +79,28 @@ See [config/discounts.json](config/discounts.json). One entry per discount:
 
 ## Running the full suite
 
+**Easiest — point-and-click via the Streamlit dashboard:**
+
+```powershell
+python -m streamlit run dashboard.py
+```
+
+A browser tab opens at http://localhost:8501. Tabs:
+- **▶ Run tests** — one button to run all active discounts, with a live log
+  and the results table appearing below when finished.
+- **📋 Discounts** — overview of what's configured in `discounts.json`.
+- **📂 Past reports** — pick any previous run from `reports/` and inspect it.
+
+**From the command line:**
+
 ```powershell
 python run_tests.py            # headless, all active discounts
 python run_tests.py --headed   # show the browser
 ```
 
-Each active discount in `config/discounts.json` is tested in a fresh browser
-context. Baselines are measured once per unique `test_product_url` and reused.
-A JSON + TXT report lands in `reports/run_<timestamp>.{json,txt}`.
+Each active discount is tested in a fresh browser context. Baselines are
+measured once per unique `test_product_url` and reused. A JSON + TXT report
+lands in `reports/run_<timestamp>.{json,txt}`.
 
 ## Roadmap
 
@@ -95,7 +109,7 @@ A JSON + TXT report lands in `reports/run_<timestamp>.{json,txt}`.
 - [x] Apply discount code, read new total, compare to expected
 - [x] Drive checkout up to (but not past) the payment step
 - [x] Test runner that iterates all active discounts and writes a JSON report
+- [x] Streamlit dashboard for running tests + browsing reports
 - [ ] Contact-lens variant selection (sphere/BC/qty)
-- [ ] Streamlit dashboard for browsing reports
 - [ ] Nightly scheduled run (Windows Task Scheduler)
 - [ ] Expand to additional Alensa sites
