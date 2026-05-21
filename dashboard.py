@@ -48,6 +48,29 @@ ROOT = Path(__file__).parent
 CONFIG_PATH = ROOT / "config" / "discounts.json"
 REPORTS_DIR = ROOT / "reports"
 
+GITHUB_REPO = "bgal-png/Discount-tester"
+GITHUB_EDIT_URL = f"https://github.com/{GITHUB_REPO}/edit/main/config/discounts.json"
+
+BLANK_DISCOUNT_TEMPLATE = {
+    "name": "REPLACE — display name",
+    "code": "REPLACE_CODE",
+    "description": "internal note from backend",
+    "active": False,
+    "discount_type": "percentage",
+    "value": 10,
+    "tolerance_pct": 1.0,
+    "test_product_url": "https://www.alensa.cz/REPLACE",
+    "non_matching_product_url": None,
+    "expected_flash_contains": ["REPLACE_CODE", "-10%"],
+    "expires_at": None,
+    "usage_limit": None,
+    "combination_forbidden": False,
+    "min_items": None,
+    "applies_to": {"brand": None, "product_type": None},
+    "conditions": {"min_basket_czk": None, "delivery_method": None},
+    "notes": "",
+}
+
 STATUS_COLOR = {
     "PASS": "🟢",
     "FAIL": "🔴",
@@ -155,7 +178,9 @@ with st.sidebar:
 
 
 # --- Tabs ---
-tab_run, tab_discounts, tab_reports = st.tabs(["▶ Run tests", "📋 Discounts", "📂 Past reports"])
+tab_run, tab_discounts, tab_edit, tab_reports = st.tabs(
+    ["▶ Run tests", "📋 Discounts", "📝 Edit config", "📂 Past reports"]
+)
 
 
 # ---- Run tab ----
@@ -225,6 +250,84 @@ with tab_discounts:
         )
     else:
         st.info("Config not loaded.")
+
+
+# ---- Edit config tab ----
+with tab_edit:
+    st.subheader("Edit `config/discounts.json`")
+    st.caption(
+        "Streamlit Cloud's filesystem is ephemeral, so saves here don't "
+        "persist across restarts. Workflow: **edit below → validate → "
+        "copy → paste into GitHub** (one click below). GitHub commit triggers "
+        "an auto-redeploy."
+    )
+
+    raw_current = CONFIG_PATH.read_text(encoding="utf-8")
+    if "config_text" not in st.session_state:
+        st.session_state.config_text = raw_current
+
+    btn_cols = st.columns([1, 1, 2])
+    with btn_cols[0]:
+        if st.button("➕ Insert blank discount"):
+            try:
+                doc = json.loads(st.session_state.config_text)
+                doc.setdefault("discounts", []).append(BLANK_DISCOUNT_TEMPLATE)
+                st.session_state.config_text = json.dumps(doc, indent=2, ensure_ascii=False)
+                st.rerun()
+            except json.JSONDecodeError as e:
+                st.error(f"Can't insert — current JSON is invalid: {e}")
+    with btn_cols[1]:
+        if st.button("↺ Reload from file"):
+            st.session_state.config_text = raw_current
+            st.rerun()
+    with btn_cols[2]:
+        st.link_button("✏ Open GitHub editor →", GITHUB_EDIT_URL,
+                       help="Paste your validated JSON there, commit, "
+                            "Streamlit redeploys automatically.",
+                       type="primary")
+
+    edited = st.text_area(
+        "JSON",
+        height=500,
+        key="config_text",
+        label_visibility="collapsed",
+    )
+
+    # Live validation.
+    err_msg = None
+    discount_count = None
+    try:
+        parsed = json.loads(edited)
+        # Schema-level validation via the same loader the runner uses.
+        # Write to a temp string-loader: easiest is reusing load_config by
+        # writing to a temp file in /tmp. But we can also call the internal
+        # parser directly to avoid disk I/O.
+        from src.config import _parse_discount  # type: ignore
+        if "discounts" not in parsed or not isinstance(parsed["discounts"], list):
+            raise ValueError("Root must contain a 'discounts' list")
+        for i, d in enumerate(parsed["discounts"]):
+            _parse_discount(d, i)
+        discount_count = len(parsed["discounts"])
+    except json.JSONDecodeError as e:
+        err_msg = f"JSON syntax error: {e}"
+    except (ConfigError, ValueError, KeyError, TypeError) as e:
+        err_msg = f"Schema error: {e}"
+
+    if err_msg:
+        st.error(err_msg)
+    else:
+        active_count = sum(1 for d in parsed["discounts"] if d.get("active", True))
+        st.success(f"✅ Valid. {discount_count} discount(s), {active_count} active.")
+        diff_changed = edited.strip() != raw_current.strip()
+        if diff_changed:
+            st.info("Your edits differ from the file currently loaded on disk. "
+                    "Commit them on GitHub to make them live.")
+        st.download_button(
+            "⬇ Download discounts.json",
+            data=edited,
+            file_name="discounts.json",
+            mime="application/json",
+        )
 
 
 # ---- Reports tab ----
