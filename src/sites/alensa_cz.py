@@ -117,36 +117,22 @@ def add_to_cart(safe: SafePage, product_url: str) -> None:
     products only (eye drops, solution, accessories, etc.).
     """
     safe.goto(product_url, wait_until="domcontentloaded")
-    # Wait for outstanding XHRs / fonts / images so the cookie banner and
-    # add-to-cart link have actually been injected by JS. Cloud machines
-    # are noticeably slower than local — give them room.
-    try:
-        safe.page.wait_for_load_state("networkidle", timeout=15_000)
-    except PWTimeout:
-        pass
-    # Banner often reappears on a fresh navigation if consent wasn't saved
-    # (or saved too late). Give it generous time on slow environments.
-    accept_cookies(safe, timeout_ms=8_000)
+    safe.page.wait_for_timeout(800)
+    # Banner sometimes reappears on a fresh navigation if consent wasn't saved.
+    accept_cookies(safe, timeout_ms=2000)
 
     add_btn = safe.page.locator("a.detail-addToBasket-button").first
-    try:
-        add_btn.wait_for(state="visible", timeout=25_000)
-    except PWTimeout:
-        # Try one cookie pass and then look again — sometimes the banner is
-        # late and was covering the button's visibility check.
-        accept_cookies(safe, timeout_ms=3_000)
-        add_btn.wait_for(state="visible", timeout=10_000)
+    add_btn.wait_for(state="visible", timeout=10_000)
     safe.safe_click(add_btn, description="add-to-cart")
-    # The link is an AJAX call; wait for the cart badge to update. The
-    # "Zobrazit košík" floating button appears after a successful add.
+    # The AJAX add updates the cart badge; the "Zobrazit košík" floating
+    # button appears after a successful add. Wait for that to confirm the
+    # add actually committed before we navigate away.
     try:
-        safe.page.wait_for_selector(".go-to-basket-btn", state="visible", timeout=10_000)
+        safe.page.wait_for_selector(".go-to-basket-btn", state="visible", timeout=8_000)
     except PWTimeout:
         pass
-    # Also wait for outstanding XHRs to finish, so the cart server-side state
-    # is committed before we navigate away.
     try:
-        safe.page.wait_for_load_state("networkidle", timeout=10_000)
+        safe.page.wait_for_load_state("networkidle", timeout=8_000)
     except PWTimeout:
         pass
     safe.page.wait_for_timeout(500)

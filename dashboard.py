@@ -19,29 +19,6 @@ import pandas as pd
 import streamlit as st
 
 
-# ---------- one-time Chromium install (Streamlit Cloud) ----------
-# Streamlit Cloud installs the pip package but does NOT run `playwright install`.
-# On first launch we lazily install the browser into ~/.cache/ms-playwright.
-# Local installs already have it via `playwright install chromium`, so this is
-# a fast no-op there.
-@st.cache_resource(show_spinner="Installing Chromium for Playwright (first run only)...")
-def _ensure_chromium() -> bool:
-    try:
-        subprocess.run(
-            [sys.executable, "-m", "playwright", "install", "chromium"],
-            check=True, capture_output=True, text=True, timeout=600,
-        )
-        return True
-    except subprocess.CalledProcessError as e:
-        st.error(f"Failed to install Chromium: {e.stderr[-1000:]}")
-        return False
-    except Exception as e:
-        st.error(f"Chromium install error: {e}")
-        return False
-
-
-_ensure_chromium()
-
 from src.config import load_config, ConfigError  # noqa: E402
 
 ROOT = Path(__file__).parent
@@ -50,6 +27,7 @@ REPORTS_DIR = ROOT / "reports"
 
 GITHUB_REPO = "bgal-png/Discount-tester"
 GITHUB_EDIT_URL = f"https://github.com/{GITHUB_REPO}/edit/main/config/discounts.json"
+IS_CLOUD = os.environ.get("STREAMLIT_RUNTIME_ENVIRONMENT") == "cloud"
 
 BLANK_DISCOUNT_TEMPLATE = {
     "name": "REPLACE — display name",
@@ -194,11 +172,12 @@ st.caption(
 
 # --- Sidebar: config status ---
 with st.sidebar:
-    if os.environ.get("STREAMLIT_RUNTIME_ENVIRONMENT") == "cloud":
+    if IS_CLOUD:
         st.info(
-            "Running on **Streamlit Cloud**. Reports are written to ephemeral "
-            "storage — they disappear when the app restarts. Download any "
-            "report you want to keep from the **Past reports** tab."
+            "**Cloud mode.** The alensa.cz WAF blocks Streamlit Cloud's "
+            "datacenter IPs, so tests run on **your PC**, not here. The "
+            "cloud dashboard is read-only for reports synced via GitHub. "
+            "See the **Run tests** tab for how."
         )
 
     st.header("Configuration")
@@ -229,6 +208,46 @@ with tab_run:
 
     if not cfg:
         st.warning("Fix the configuration error first (see sidebar).")
+    elif IS_CLOUD:
+        # Cloud mode: tests can't run here because alensa.cz blocks the IP.
+        # Show instructions for running locally + a file uploader for ad-hoc
+        # one-off imports.
+        st.warning(
+            "**Tests can't run on Streamlit Cloud** — alensa.cz's WAF blocks "
+            "the cloud's outbound IPs (we have a screenshot proving it). "
+            "Run the tests on your own PC, then sync the report here."
+        )
+
+        st.markdown("### Run locally (your PC)")
+        st.code(
+            'cd "C:\\Users\\blank\\Desktop\\Random codes\\discount-tester"\n'
+            "python run_tests.py --push",
+            language="powershell",
+        )
+        st.caption(
+            "`--push` commits + pushes the report to GitHub. Streamlit Cloud "
+            "auto-redeploys in ~30 s, then you'll see the new run under "
+            "**Past reports**. Drop `--push` if you want to commit manually."
+        )
+
+        st.markdown("### Or upload a report file directly")
+        upload = st.file_uploader(
+            "Drop a `run_*.json` file to view it",
+            type=["json"],
+            help="Ad-hoc: view a report without pushing it to GitHub. "
+                 "This view is per-session.",
+        )
+        if upload is not None:
+            try:
+                report = json.loads(upload.read().decode("utf-8"))
+                st.subheader(f"Uploaded: {upload.name}")
+                summary = report.get("summary", {})
+                st.write({k: v for k, v in summary.items() if v > 0} or summary)
+                df = results_dataframe(report)
+                st.dataframe(df, use_container_width=True, hide_index=True)
+                render_diagnostics(report.get("results", []), key_prefix="upload")
+            except Exception as e:
+                st.error(f"Couldn't read that file: {e}")
     else:
         active = [d for d in cfg.discounts if d.active]
         cols = st.columns([1, 1, 2])

@@ -3,9 +3,15 @@ __pycache__/
 .venv/
 venv/
 .env
-reports/*.png
-reports/*.html
-reports/*.json
+# Track JSON + TXT reports so they sync to the cloud dashboard via GitHub.
+# Keep diagnostic PNGs/HTML out of git (large, noisy, regenerable).
+reports/probe_*.png
+reports/probe_*.html
+reports/run_*.png
+reports/dc_code_debug.*
+reports/cart_with_code.html
+reports/homepage.png
+reports/flash_*.png
 reports/diagnostics/
 !reports/.gitkeep
 .playwright/

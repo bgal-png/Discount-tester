@@ -102,37 +102,46 @@ Each active discount is tested in a fresh browser context. Baselines are
 measured once per unique `test_product_url` and reused. A JSON + TXT report
 lands in `reports/run_<timestamp>.{json,txt}`.
 
-## Deploy to Streamlit Cloud
+## Split mode: tests local, dashboard on cloud
 
-The repo is preconfigured for [Streamlit Community Cloud](https://share.streamlit.io/):
+`alensa.cz`'s WAF blocks Streamlit Cloud's datacenter IPs as suspected bots
+(confirmed empirically — full-page screenshot of "URL has been blocked" on
+file). So the working setup is:
 
-- `requirements.txt` pins `streamlit`, `pandas`, `playwright`
-- `packages.txt` installs the apt libraries Chromium needs on Debian
-- `dashboard.py` lazily runs `playwright install chromium` on first launch
+- **Tests** run on your PC (or any IP your WAF doesn't block)
+- **Dashboard** runs on Streamlit Cloud as a read-only view, syncing
+  reports through this GitHub repo
 
-Steps:
+### Your PC: run + push
 
-1. Push the repo to GitHub (already done at `bgal-png/Discount-tester`).
-2. In Streamlit Cloud, **New app** → pick this repo and `main` branch.
-3. Main file path: `dashboard.py`. Python version: 3.11+.
-4. Deploy. First launch takes 1–3 min while Chromium downloads (~150 MB).
+```powershell
+cd "C:\Users\blank\Desktop\Random codes\discount-tester"
+python run_tests.py --push
+```
 
-**Caveats to be aware of on the free tier:**
+`--push` commits and pushes the new `reports/run_<ts>.{json,txt}` to GitHub.
+Streamlit Cloud auto-redeploys in ~30 s and the new report appears under
+**Past reports**.
 
-- **Ephemeral filesystem** — `reports/` is wiped whenever the app restarts.
-  Always **Download** a report from the Past reports tab if you want to
-  keep it. Long-term history would need an external store (S3, GitHub
-  artifacts, a database) — easy to add later.
-- **Single 1 GB instance** — fine for sequential tests (~300 MB while a
-  browser is running) but not for heavy parallelism.
-- **Outbound IP is in the US/EU** — alensa.cz served from a non-CZ IP
-  generally still returns the Czech site (the URL `.cz` and `cs-CZ` locale
-  header force it), but if anything looks off (different prices, popups),
-  a non-CZ IP is the first thing to check. Test once on cloud and confirm
-  totals match a local run.
+Without `--push` the runner just writes locally; you can commit yourself
+later or use the "Or upload a report file directly" field in the dashboard.
 
-If anything fails on first deploy, the most common cause is a missing apt
-library — add it to `packages.txt` and re-deploy.
+### Streamlit Cloud: deploy the dashboard
+
+1. [share.streamlit.io](https://share.streamlit.io/) → **New app**
+2. Repository `bgal-png/Discount-tester`, branch `main`, file `dashboard.py`
+3. Python 3.11+ → **Deploy**
+
+The cloud dashboard does NOT run tests — it only reads reports from `reports/`
+(committed by `--push`) and lets you upload one-off JSON reports for ad-hoc
+viewing. No Chromium download needed there.
+
+### Why this split
+
+- Local runs are fast (no network round-trip to a cloud)
+- No paid proxy needed
+- Free Streamlit Cloud tier is plenty for a read-only dashboard
+- Reports become permanent history in git, not ephemeral cloud storage
 
 ## Roadmap
 

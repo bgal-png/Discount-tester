@@ -1,0 +1,28 @@
+{
+  "timestamp": "20260521_150114",
+  "site": "alensa.cz",
+  "currency": "CZK",
+  "summary": {
+    "PASS": 1,
+    "FAIL": 0,
+    "NOT_APPLIED": 0,
+    "ERROR": 0
+  },
+  "results": [
+    {
+      "name": "Gelone 20% off (roztoky a kapky)",
+      "code": "gel26care",
+      "product_url": "https://www.alensa.cz/roztok-gelone-360-ml",
+      "expected_type": "percentage",
+      "expected_value": 20.0,
+      "tolerance_pct": 1.0,
+      "baseline_czk": 199.0,
+      "observed_total_czk": 159.0,
+      "observed_discount_czk": 40.0,
+      "observed_discount_pct": 20.1,
+      "status": "PASS",
+      "detail": "observed 20.1% vs expected 20.0% (delta 0.10pp ≤ 1.0pp)",
+      "duration_s": 7.7
+    }
+  ]
+}

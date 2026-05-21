@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import time
 from dataclasses import asdict, dataclass, field
 from datetime import date, datetime
@@ -269,6 +270,11 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", default="config/discounts.json")
     ap.add_argument("--headed", action="store_true")
+    ap.add_argument(
+        "--push", action="store_true",
+        help="After writing the report, git-commit + push it so the cloud "
+             "dashboard sees it on next redeploy.",
+    )
     args = ap.parse_args()
 
     cfg = load_config(args.config)
@@ -368,6 +374,30 @@ def main() -> None:
     print("\n".join(lines))
     print()
     print(f"Reports written:\n  {json_path}\n  {txt_path}")
+
+    if args.push:
+        push_to_github(json_path, txt_path, ts, summary)
+
+
+def push_to_github(json_path: Path, txt_path: Path, ts: str, summary: dict) -> None:
+    """Commit + push the new report so the cloud dashboard picks it up."""
+    msg = f"Report {ts}: " + ", ".join(f"{k}={v}" for k, v in summary.items() if v)
+    try:
+        subprocess.run(["git", "add", str(json_path), str(txt_path)], check=True)
+        # Skip if nothing actually staged (file was already pushed somehow).
+        diff = subprocess.run(["git", "diff", "--cached", "--name-only"],
+                              capture_output=True, text=True)
+        if not diff.stdout.strip():
+            print("(no changes to push)")
+            return
+        subprocess.run(["git", "commit", "-m", msg], check=True)
+        subprocess.run(["git", "push"], check=True)
+        print(f"Pushed report to GitHub: {msg}")
+    except FileNotFoundError:
+        print("git not found on PATH — skipping push. Install Git or push manually.")
+    except subprocess.CalledProcessError as e:
+        print(f"git push failed: {e}. Push manually with `git push` if you want "
+              "the cloud dashboard to see this report.")
 
 
 if __name__ == "__main__":
