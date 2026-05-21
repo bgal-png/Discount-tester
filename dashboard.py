@@ -92,6 +92,42 @@ def load_report(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def render_diagnostics(results: list[dict]) -> None:
+    """If any result has diagnostics, show them inline (screenshot + URL/title)."""
+    diag_results = [r for r in results if r.get("diagnostics")]
+    if not diag_results:
+        return
+    st.subheader("🔍 Diagnostics for failures")
+    st.caption(
+        "When a test fails, we capture the page state at that moment. "
+        "Most useful signal for figuring out what went wrong — especially "
+        "on Streamlit Cloud where the environment differs from local."
+    )
+    for r in diag_results:
+        d = r["diagnostics"]
+        with st.expander(f"❌ {r['code']} — {r.get('detail', 'error')[:120]}", expanded=True):
+            cols = st.columns([2, 3])
+            with cols[0]:
+                st.write(f"**Landed at:** `{d.get('url', '')}`")
+                st.write(f"**Page title:** `{d.get('title', '')}`")
+                if d.get("screenshot"):
+                    shot_path = Path(d["screenshot"])
+                    if shot_path.exists():
+                        with open(shot_path, "rb") as fh:
+                            st.download_button(
+                                "⬇ Download screenshot",
+                                data=fh.read(),
+                                file_name=shot_path.name,
+                                mime="image/png",
+                                key=f"dl_{r['code']}_{shot_path.name}",
+                            )
+            with cols[1]:
+                if d.get("screenshot"):
+                    shot_path = Path(d["screenshot"])
+                    if shot_path.exists():
+                        st.image(str(shot_path), use_container_width=True)
+
+
 def results_dataframe(report: dict) -> pd.DataFrame:
     rows = []
     for r in report.get("results", []):
@@ -222,6 +258,7 @@ with tab_run:
                 st.write({k: v for k, v in summary.items() if v > 0} or summary)
                 df = results_dataframe(report)
                 st.dataframe(df, use_container_width=True, hide_index=True)
+                render_diagnostics(report.get("results", []))
 
 
 # ---- Discounts tab ----
@@ -353,6 +390,7 @@ with tab_reports:
         st.write(summary)
         df = results_dataframe(report)
         st.dataframe(df, use_container_width=True, hide_index=True)
+        render_diagnostics(report.get("results", []))
 
         with st.expander("Raw JSON"):
             st.json(report)

@@ -31,6 +31,39 @@ from src.sites import alensa_cz
 from src.safety import SafetyViolation
 
 
+DIAG_DIR = Path("reports") / "diagnostics"
+
+
+def save_diagnostics(page, tag: str) -> dict:
+    """Capture screenshot + HTML + URL/title when something goes wrong.
+
+    Returns a dict that can be embedded in the result for the dashboard to
+    render. Paths are relative to the project root.
+    """
+    DIAG_DIR.mkdir(parents=True, exist_ok=True)
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    stem = f"{tag}_{ts}"
+    info = {"url": "", "title": "", "screenshot": "", "html": ""}
+    try:
+        info["url"] = page.url
+        info["title"] = page.title()
+    except Exception:
+        pass
+    try:
+        path = DIAG_DIR / f"{stem}.png"
+        page.screenshot(path=str(path), full_page=True)
+        info["screenshot"] = str(path.as_posix())
+    except Exception:
+        pass
+    try:
+        path = DIAG_DIR / f"{stem}.html"
+        path.write_text(page.content(), encoding="utf-8")
+        info["html"] = str(path.as_posix())
+    except Exception:
+        pass
+    return info
+
+
 @dataclass
 class MeasureWithCode:
     total: float
@@ -56,6 +89,7 @@ class DiscountTestResult:
     status: str = "ERROR"     # PASS | FAIL | NOT_APPLIED | ERROR | SKIPPED_EXPIRED
     detail: str = ""
     duration_s: float = 0.0
+    diagnostics: Optional[dict] = None       # set on failure: screenshot + URL/title
 
 
 def new_context(p: Playwright, headed: bool) -> BrowserContext:
@@ -63,24 +97,35 @@ def new_context(p: Playwright, headed: bool) -> BrowserContext:
     return browser.new_context(locale="cs-CZ", viewport={"width": 1366, "height": 900})
 
 
-def measure_baseline(p: Playwright, product_url: str, headed: bool) -> float:
-    """Add product to a clean cart, return the subtotal."""
+def measure_baseline(p: Playwright, product_url: str, headed: bool,
+                     diag_out: Optional[dict] = None) -> float:
+    """Add product to a clean cart, return the subtotal.
+
+    If diag_out is provided, save diagnostics into it on failure (mutated).
+    """
     ctx = new_context(p, headed)
+    page = None
     try:
         page = ctx.new_page()
         safe = alensa_cz.open_homepage(page)
         alensa_cz.add_to_cart(safe, product_url)
         alensa_cz.go_to_cart(safe)
         return alensa_cz.read_cart_total(safe)
+    except Exception:
+        if diag_out is not None and page is not None:
+            diag_out.update(save_diagnostics(page, "baseline_fail"))
+        raise
     finally:
         ctx.close()
 
 
 def measure_with_code(p: Playwright, product_url: str, code: str,
-                      headed: bool) -> MeasureWithCode:
+                      headed: bool, diag_out: Optional[dict] = None
+                      ) -> MeasureWithCode:
     """Apply the code via homepage URL param, then add product, then on the
     cart page read both the total and the persistent applied-coupon chip."""
     ctx = new_context(p, headed)
+    page = None
     try:
         page = ctx.new_page()
         safe = alensa_cz.open_homepage(page, dc_code=code)
@@ -89,6 +134,10 @@ def measure_with_code(p: Playwright, product_url: str, code: str,
         total = alensa_cz.read_cart_total(safe)
         chip = alensa_cz.read_applied_coupon_info(safe)
         return MeasureWithCode(total=total, flash_text=chip)
+    except Exception:
+        if diag_out is not None and page is not None:
+            diag_out.update(save_diagnostics(page, f"withcode_{code}_fail"))
+        raise
     finally:
         ctx.close()
 
@@ -150,8 +199,9 @@ def run_one(p: Playwright, d: Discount, baseline: float, headed: bool
         baseline_czk=baseline,
     )
     t0 = time.time()
+    diag: dict = {}
     try:
-        m = measure_with_code(p, d.test_product_url, d.code, headed)
+        m = measure_with_code(p, d.test_product_url, d.code, headed, diag_out=diag)
         res.observed_total_czk = m.total
         res.observed_discount_czk = round(baseline - m.total, 2)
         if baseline:
@@ -198,8 +248,10 @@ def run_one(p: Playwright, d: Discount, baseline: float, headed: bool
 
     except SafetyViolation as e:
         res.status, res.detail = "ERROR", f"SAFETY: {e}"
+        res.diagnostics = diag or None
     except Exception as e:
         res.status, res.detail = "ERROR", f"{type(e).__name__}: {e}"
+        res.diagnostics = diag or None
     res.duration_s = round(time.time() - t0, 1)
     return res
 
@@ -242,14 +294,20 @@ def main() -> None:
         # Baseline per unique product (avoids re-measuring for shared products).
         baselines: dict[str, float] = {}
         unique_products = sorted({d.test_product_url for d in active})
+        baseline_diags: dict[str, dict] = {}
         for url in unique_products:
             print(f"[baseline] {url}")
+            diag: dict = {}
             try:
-                baselines[url] = measure_baseline(p, url, args.headed)
+                baselines[url] = measure_baseline(p, url, args.headed, diag_out=diag)
                 print(f"           {baselines[url]} CZK")
             except Exception as e:
                 print(f"           ERROR measuring baseline: {e}")
+                if diag.get("screenshot"):
+                    print(f"           diagnostic screenshot: {diag['screenshot']}")
+                    print(f"           landed at: {diag.get('url')!r}  title: {diag.get('title')!r}")
                 baselines[url] = float("nan")
+                baseline_diags[url] = diag
 
         today = date.today()
         # Each active discount.
@@ -272,6 +330,7 @@ def main() -> None:
                     expected_type=d.discount_type, expected_value=d.value,
                     tolerance_pct=d.tolerance_pct,
                     status="ERROR", detail="baseline measurement failed",
+                    diagnostics=baseline_diags.get(d.test_product_url) or None,
                 ))
                 continue
             results.append(run_one(p, d, baseline, args.headed))
