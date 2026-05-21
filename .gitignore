@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+reports/*.png
+reports/*.html
+reports/*.json
+!reports/.gitkeep
+.playwright/

@@ -1,0 +1,38 @@
+{
+  "site": "alensa.cz",
+  "currency": "CZK",
+  "discounts": [
+    {
+      "name": "Example Ray-Ban 10% off",
+      "code": "RAYBAN10",
+      "active": true,
+      "discount_type": "percentage",
+      "value": 10,
+      "applies_to": {
+        "brand": "Ray-Ban",
+        "product_type": "glasses"
+      },
+      "conditions": {
+        "min_basket_czk": null,
+        "delivery_method": null
+      },
+      "notes": "Placeholder. Replace with a real currently-active code before running."
+    },
+    {
+      "name": "Example contact lens 15% off",
+      "code": "LENS15",
+      "active": false,
+      "discount_type": "percentage",
+      "value": 15,
+      "applies_to": {
+        "brand": null,
+        "product_type": "contact_lenses"
+      },
+      "conditions": {
+        "min_basket_czk": 1000,
+        "delivery_method": null
+      },
+      "notes": "Disabled until we have a real code."
+    }
+  ]
+}
