@@ -27,7 +27,27 @@ REPORTS_DIR = ROOT / "reports"
 
 GITHUB_REPO = "bgal-png/Discount-tester"
 GITHUB_EDIT_URL = f"https://github.com/{GITHUB_REPO}/edit/main/config/discounts.json"
-IS_CLOUD = os.environ.get("STREAMLIT_RUNTIME_ENVIRONMENT") == "cloud"
+
+
+def _detect_cloud() -> bool:
+    """Detect Streamlit Community Cloud reliably.
+
+    The official env var (STREAMLIT_RUNTIME_ENVIRONMENT) isn't actually set
+    on Community Cloud despite being documented. The reliable signal is the
+    mount path: Community Cloud always exposes the repo under /mount/src/.
+    Belt-and-braces with a hostname check.
+    """
+    if str(ROOT).startswith("/mount/src/"):
+        return True
+    if os.environ.get("STREAMLIT_RUNTIME_ENVIRONMENT") == "cloud":
+        return True
+    # HOSTNAME on Streamlit Cloud containers starts with "streamlit-".
+    if os.environ.get("HOSTNAME", "").startswith("streamlit-"):
+        return True
+    return False
+
+
+IS_CLOUD = _detect_cloud()
 
 BLANK_DISCOUNT_TEMPLATE = {
     "name": "REPLACE — display name",
