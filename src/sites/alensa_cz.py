@@ -14,9 +14,15 @@ from ..safety import SafePage, SafetyConfig
 HOST = "alensa.cz"
 BASE_URL = "https://www.alensa.cz/"
 
-# Common cookie-banner button texts on Czech sites.
+# Cookie-banner accept selectors (alensa.cz uses a "consentmanager.net"-style
+# banner whose accept button has class `cmpboxbtnyes` and label "Pokračovat").
+COOKIE_ACCEPT_SELECTORS = [
+    "button.cmpboxbtnyes",
+    "a.cmpboxbtnyes",
+    ".cmpboxbtnyes",
+]
 COOKIE_ACCEPT_TEXTS = [
-    "Souhlasím", "Přijmout vše", "Přijmout", "Rozumím",
+    "Pokračovat", "Souhlasím", "Přijmout vše", "Přijmout", "Rozumím",
     "Accept all", "Accept", "OK",
 ]
 
@@ -31,17 +37,31 @@ def open_homepage(page: Page, screenshot_path: Path | None = None) -> SafePage:
     return safe
 
 
-def accept_cookies(safe: SafePage) -> bool:
-    """Try a few common button texts. Returns True if something was clicked."""
-    for text in COOKIE_ACCEPT_TEXTS:
-        btn = safe.page.get_by_role("button", name=text, exact=False)
-        try:
-            if btn.count() > 0 and btn.first.is_visible(timeout=1000):
-                safe.safe_click(btn.first, description=f"cookie:{text}")
-                safe.page.wait_for_timeout(500)
-                return True
-        except PWTimeout:
-            continue
-        except Exception:
-            continue
-    return False
+def accept_cookies(safe: SafePage, timeout_ms: int = 5000) -> bool:
+    """Accept the consentmanager.net banner.
+
+    The banner is a modal with a background overlay (#cmpbox2) that intercepts
+    pointer events, so a normal click() gets blocked. We use a JS-dispatched
+    click on the accept anchor (.cmpboxbtnyes) and then wait for the banner
+    container (#cmpbox) to disappear.
+    """
+    page = safe.page
+    # Wait for the banner to actually render — it's injected by JS.
+    try:
+        page.wait_for_selector(".cmpboxbtnyes", state="visible", timeout=timeout_ms)
+    except PWTimeout:
+        return False  # no banner shown — already accepted, or not this site
+
+    # Safety check: the button text should be a cookie-accept word, NOT a pay
+    # word. If somehow it isn't, we'd rather skip than risk something weird.
+    text = page.locator(".cmpboxbtnyes").first.inner_text().strip()
+    if not any(w.lower() in text.lower() for w in COOKIE_ACCEPT_TEXTS):
+        return False
+
+    # JS click — bypasses pointer-events interception by the BG overlay.
+    page.evaluate("document.querySelector('.cmpboxbtnyes')?.click()")
+    try:
+        page.wait_for_selector("#cmpbox", state="hidden", timeout=timeout_ms)
+        return True
+    except PWTimeout:
+        return False

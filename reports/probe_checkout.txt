@@ -1,0 +1,69 @@
+URL: https://www.alensa.cz/nakup/kosik/
+TITLE: Nákupní košík | Alensa.cz
+
+== HEADINGS ==
+  <h1> Košík
+  <h2> Potřebujete ještě něco?
+  <h2> Kazetka se zrcátkem - Alensa
+  <h2> Roztok Gelone 360 ml
+  <h2> Pouzdro Alensa s těsněním
+  <h2> Cvikr na čtení Válle Mini Mobile
+  <h2> Oční kapky Gelone Natural Drops 10 ml
+  <h2> Aplikátor kontaktních čoček Alensa
+  <h2> TopVue One+ (5 čoček)
+  <h2> Sportovní sluneční brýle Alensa černozlaté
+  <h2> Pouzdro na brýle Alensa - velké
+  <h2> Pevné pouzdro TopVue Elite
+  <h2> Naše produkty
+  <h2> Informace
+  <h2> Newsletter
+  <h2> Zákaznický servis
+  <h2> Alensa
+  <h2> Optiky Alensa
+  <h2> Partnerské optiky
+
+== BUTTONS ==
+  [Přeskočit navigaci]   class='skip-navigation-btn btn btn-sm btn-primary'
+  [Přihlásit se]   class='login-register-link show-login-dialog'
+  [Vybrat parametry i pro druhé oko]   id='frm-873134245-commonAttributesFormBasket1-showSecondaryAttri' name='showSecondaryAttributes' class='secondaryAttributesToggle button btn btn-sm btn-tercialy-out'
+  [Zpět k nákupu]   class='btn btn-text-outline btn-back'
+  [POKRAČOVAT V OBJEDNÁVCE]   class='btn btn-tercialy btn-proceed btn-uppercase datalayer-checkou'
+  [Přidat do košíku]   class='btn btn-block btn-sm btn-secondary'
+  [Přidat do košíku]   class='btn btn-block btn-sm btn-secondary'
+  [Přidat do košíku]   class='btn btn-block btn-sm btn-secondary'
+  [Přidat do košíku]   class='btn btn-block btn-sm btn-secondary'
+  [Přidat do košíku]   class='btn btn-block btn-sm btn-secondary'
+  [Přidat do košíku]   class='btn btn-block btn-sm btn-secondary'
+  [Přidat do košíku]   class='btn btn-block btn-sm btn-secondary'
+  [Přidat do košíku]   class='btn btn-block btn-sm btn-secondary'
+  [Přidat do košíku]   class='btn btn-block btn-sm btn-secondary'
+  [Přidat do košíku]   class='btn btn-block btn-sm btn-secondary'
+  [Přihlásit k odběru]   id='frm-2082367325-doi1742626652Form-save' name='save' class='button btn btn-block double-optin-subscribe btn- btn-seconda'
+  [Děkuji, ale nemám zájem o výhody]   id='frm-2082367325-doi1742626652Form-cancel' name='cancel' class='button ajax double-optin-decline'
+  [Nastavení cookies]   class='cookie-settings'
+  [Rezervovat měření zraku]   class='btn btn-block btn-sm btn-primary'
+  [Zavřít]   class='btn btn-xs btn-secondary'
+
+== INPUTS / SELECTS ==
+  <select>  id='frm-873134245-commonAttributesFormBasket1-primary-amount' name='primary[amount]'
+  <select>  id='frm-873134245-commonAttributesFormBasket1-primary-7' name='primary[7]'
+  <select>  id='frm-873134245-commonAttributesFormBasket1-primary-8disabled' name='primary[8disabled]'
+  <select>  id='frm-873134245-commonAttributesFormBasket1-primary-9disabled' name='primary[9disabled]'
+  <input>  type='submit' id='frm-873134245-commonAttributesFormBasket1-showSecondaryAttri' name='showSecondaryAttributes'
+  <input>  type='checkbox' id='basket-coupon-checkbox'
+  <input>  type='text' id='frm-2082367325-doi1742626652Form-email' name='email' placeholder='jan.novak@seznam.cz'
+  <input>  type='submit' id='frm-2082367325-doi1742626652Form-save' name='save'
+  <input>  type='submit' id='frm-2082367325-doi1742626652Form-cancel' name='cancel'
+
+== PRICES ON PAGE (top 20) ==
+  279 Kč
+  921 Kč
+  159 Kč
+  199 Kč
+  35 Kč
+  359 Kč
+  269 Kč
+  39 Kč
+  99 Kč
+  229 Kč
+  149 Kč

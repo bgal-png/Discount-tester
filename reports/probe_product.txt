@@ -1,0 +1,62 @@
+URL: https://www.alensa.cz/gelone-monthly-3-cocky
+TITLE: Gelone Monthly (3 čočky) | Alensa.cz
+
+== HEADINGS ==
+  <h1> Gelone Monthly (3 čočky)
+  <h2> Výhodné balíčky
+  <h2> Péče o Vaše oči
+  <h2> Gelone Monthly
+  <h2> Parametry produktu - Gelone Monthly (3 čočky)
+  <h2> Informace o výrobci
+  <h2> Hodnocení
+  <h2> Komentáře (1)
+  <h2> Naše produkty
+  <h2> Informace
+  <h2> Newsletter
+  <h2> Zákaznický servis
+  <h2> Alensa
+  <h2> Optiky Alensa
+  <h2> Partnerské optiky
+
+== BUTTONS ==
+  [Přeskočit navigaci]   class='skip-navigation-btn btn btn-sm btn-primary'
+  [Přihlásit se]   class='login-register-link show-login-dialog'
+  [Zobrazit košík]   class='btn btn-xs btn-tercialy go-to-basket-btn'
+  [Vybrat parametry i pro druhé oko]   id='frm-1735531604-commonAttributesForm55674-showSecondaryAttrib' name='showSecondaryAttributes' class='secondaryAttributesToggle button btn btn-sm btn-tercialy-out'
+  [Vložit do košíku]   class='ajax btn btn-block btn-xxl btn-multiple-icons btn-tercialy d'
+  [Informace o výrobci]   class='product-properties-title'
+  [Zeptat se]   class='btn btn-secondary btn-sm comments-box-btn comments-box-toggl'
+  [Nahlásit komentář]   class='comments-actual-comment-report'
+  [Přihlásit k odběru]   id='frm-1954396733-doi1448772009Form-save' name='save' class='button btn btn-block double-optin-subscribe btn- btn-seconda'
+  [Děkuji, ale nemám zájem o výhody]   id='frm-1954396733-doi1448772009Form-cancel' name='cancel' class='button ajax double-optin-decline'
+  [Nastavení cookies]   class='cookie-settings'
+  [Rezervovat měření zraku]   class='btn btn-block btn-sm btn-primary'
+
+== INPUTS / SELECTS ==
+  <input>  type='text' id='frm-1735531604-simpleForm-phrase' name='phrase' placeholder='Napište, co hledáte...'
+  <select>  id='frm-1735531604-commonAttributesForm55674-primary-amount' name='primary[amount]'
+  <select>  id='frm-1735531604-commonAttributesForm55674-primary-7' name='primary[7]'
+  <select>  id='frm-1735531604-commonAttributesForm55674-primary-8disabled' name='primary[8disabled]'
+  <select>  id='frm-1735531604-commonAttributesForm55674-primary-9disabled' name='primary[9disabled]'
+  <input>  type='submit' id='frm-1735531604-commonAttributesForm55674-showSecondaryAttrib' name='showSecondaryAttributes'
+  <input>  type='checkbox' id='frm-323130663-form-check' name='check'
+  <select>  id='frm-323130663-form-solutionItemId' name='solutionItemId'
+  <input>  type='text' id='frm-1954396733-doi1448772009Form-email' name='email' placeholder='jan.novak@seznam.cz'
+  <input>  type='submit' id='frm-1954396733-doi1448772009Form-save' name='save'
+  <input>  type='submit' id='frm-1954396733-doi1448772009Form-cancel' name='cancel'
+
+== PRICES ON PAGE (top 20) ==
+  0 Kč
+  279 Kč
+  199 Kč
+  179 Kč
+  529 Kč
+  99 Kč
+  458 Kč
+  20 Kč
+  493 Kč
+  65 Kč
+  169 Kč
+  159 Kč
+  1 200 Kč
+  93 Kč
