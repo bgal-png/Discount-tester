@@ -151,11 +151,13 @@ def results_dataframe(report: dict) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def run_tests_streaming(placeholder, headed: bool) -> int:
+def run_tests_streaming(placeholder, headed: bool, push: bool = False) -> int:
     """Run run_tests.py as a subprocess and stream its output into the UI."""
     cmd = [sys.executable, "run_tests.py"]
     if headed:
         cmd.append("--headed")
+    if push:
+        cmd.append("--push")
     proc = subprocess.Popen(
         cmd,
         cwd=str(ROOT),
@@ -270,23 +272,33 @@ with tab_run:
                 st.error(f"Couldn't read that file: {e}")
     else:
         active = [d for d in cfg.discounts if d.active]
-        cols = st.columns([1, 1, 2])
+        cols = st.columns([1, 1, 1, 2])
         with cols[0]:
-            headed = st.checkbox("Show browser (slower)", value=False,
-                                 help="Run in a visible Chromium window instead of headless.")
+            headed = st.checkbox(
+                "Show browser",
+                value=False,
+                help="Run in a visible Chromium window instead of headless.",
+            )
         with cols[1]:
+            push_after = st.checkbox(
+                "Push report to cloud",
+                value=True,
+                help="After the run, commit + push the report to GitHub so "
+                     "the cloud dashboard sees it. Needs git on PATH.",
+            )
+        with cols[2]:
             run_clicked = st.button(
                 f"▶ Run {len(active)} active discount(s)",
                 type="primary",
                 disabled=len(active) == 0,
             )
-        with cols[2]:
-            st.caption("Headless ≈ 8–12 s per discount on this machine. Watch the live log below.")
+        with cols[3]:
+            st.caption("Headless ≈ 8–12 s per discount. Live log below.")
 
         if run_clicked:
             log_placeholder = st.empty()
             with st.spinner("Running..."):
-                rc = run_tests_streaming(log_placeholder, headed=headed)
+                rc = run_tests_streaming(log_placeholder, headed=headed, push=push_after)
             if rc == 0:
                 st.success("Run finished. Latest report below.")
             else:

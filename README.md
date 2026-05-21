@@ -102,6 +102,22 @@ Each active discount is tested in a fresh browser context. Baselines are
 measured once per unique `test_product_url` and reused. A JSON + TXT report
 lands in `reports/run_<timestamp>.{json,txt}`.
 
+## Daily use (no commands)
+
+After one-time setup, day-to-day use is **all in the browser**:
+
+1. **Double-click `start_dashboard.bat`** in the project folder (or a desktop
+   shortcut to it). A console window appears and your browser opens at
+   http://localhost:8501.
+2. In the **▶ Run tests** tab, leave "Push report to cloud" checked, click
+   the big red button. The live log streams while Playwright works.
+3. Results appear when done. The report is also pushed to GitHub
+   automatically, so the cloud dashboard (anywhere) sees it in ~30 s.
+4. Close the console window when you're finished.
+
+To make a desktop shortcut: right-click `start_dashboard.bat` → **Send to** →
+**Desktop (create shortcut)**. Rename it to "Discount Tester" if you like.
+
 ## Split mode: tests local, dashboard on cloud
 
 `alensa.cz`'s WAF blocks Streamlit Cloud's datacenter IPs as suspected bots
