@@ -92,8 +92,12 @@ def load_report(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def render_diagnostics(results: list[dict]) -> None:
-    """If any result has diagnostics, show them inline (screenshot + URL/title)."""
+def render_diagnostics(results: list[dict], key_prefix: str = "diag") -> None:
+    """If any result has diagnostics, show them inline (screenshot + URL/title).
+
+    key_prefix must be unique per call site (Streamlit element keys are
+    globally namespaced within a single script run).
+    """
     diag_results = [r for r in results if r.get("diagnostics")]
     if not diag_results:
         return
@@ -119,7 +123,7 @@ def render_diagnostics(results: list[dict]) -> None:
                                 data=fh.read(),
                                 file_name=shot_path.name,
                                 mime="image/png",
-                                key=f"dl_{r['code']}_{shot_path.name}",
+                                key=f"{key_prefix}_dl_{r['code']}_{shot_path.name}",
                             )
             with cols[1]:
                 if d.get("screenshot"):
@@ -258,7 +262,7 @@ with tab_run:
                 st.write({k: v for k, v in summary.items() if v > 0} or summary)
                 df = results_dataframe(report)
                 st.dataframe(df, use_container_width=True, hide_index=True)
-                render_diagnostics(report.get("results", []))
+                render_diagnostics(report.get("results", []), key_prefix="run")
 
 
 # ---- Discounts tab ----
@@ -390,7 +394,7 @@ with tab_reports:
         st.write(summary)
         df = results_dataframe(report)
         st.dataframe(df, use_container_width=True, hide_index=True)
-        render_diagnostics(report.get("results", []))
+        render_diagnostics(report.get("results", []), key_prefix=f"hist_{path.stem}")
 
         with st.expander("Raw JSON"):
             st.json(report)
