@@ -1,0 +1,4 @@
+Run 20260521_150024 — alensa.cz
+Summary: {'PASS': 0, 'FAIL': 0, 'NOT_APPLIED': 0, 'ERROR': 1}
+
+[ERROR      ] gel26care       (0.0s) — baseline measurement failed

@@ -46,6 +46,8 @@ class Discount:
     discount_type: str
     value: float
     active: bool = True
+    tolerance_pct: float = 1.0  # absolute percentage-point tolerance (e.g. 1.0 = ±1pp)
+    test_product_url: Optional[str] = None
     applies_to: AppliesTo = field(default_factory=AppliesTo)
     conditions: Conditions = field(default_factory=Conditions)
     notes: str = ""
@@ -100,12 +102,18 @@ def _parse_discount(d: dict, idx: int) -> Discount:
             f"{where}: delivery_method '{cond.delivery_method}' not allowed yet"
         )
 
+    tol = d.get("tolerance_pct", 1.0)
+    if not isinstance(tol, (int, float)) or tol < 0:
+        raise ConfigError(f"{where}: tolerance_pct must be a non-negative number")
+
     return Discount(
         name=str(name),
         code=str(code),
         discount_type=dtype,
         value=float(value),
         active=bool(d.get("active", True)),
+        tolerance_pct=float(tol),
+        test_product_url=d.get("test_product_url"),
         applies_to=applies,
         conditions=cond,
         notes=str(d.get("notes", "")),

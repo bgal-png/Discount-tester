@@ -3,36 +3,22 @@
   "currency": "CZK",
   "discounts": [
     {
-      "name": "Example Ray-Ban 10% off",
-      "code": "RAYBAN10",
+      "name": "Gelone 20% off (roztoky a kapky)",
+      "code": "gel26care",
       "active": true,
       "discount_type": "percentage",
-      "value": 10,
+      "value": 20,
+      "tolerance_pct": 1.0,
+      "test_product_url": "https://www.alensa.cz/roztok-gelone-360-ml",
       "applies_to": {
-        "brand": "Ray-Ban",
-        "product_type": "glasses"
+        "brand": "Gelone",
+        "product_type": "solutions"
       },
       "conditions": {
         "min_basket_czk": null,
         "delivery_method": null
       },
-      "notes": "Placeholder. Replace with a real currently-active code before running."
-    },
-    {
-      "name": "Example contact lens 15% off",
-      "code": "LENS15",
-      "active": false,
-      "discount_type": "percentage",
-      "value": 15,
-      "applies_to": {
-        "brand": null,
-        "product_type": "contact_lenses"
-      },
-      "conditions": {
-        "min_basket_czk": 1000,
-        "delivery_method": null
-      },
-      "notes": "Disabled until we have a real code."
+      "notes": "User-supplied calibration code. Site shows 'Gratulujeme! 20% sleva na roztoky a oční kapky Gelone'."
     }
   ]
 }

@@ -77,14 +77,25 @@ See [config/discounts.json](config/discounts.json). One entry per discount:
 | `conditions.delivery_method` | Restrict to a delivery method (none implemented yet) |
 | `notes` | Free-text notes for humans |
 
+## Running the full suite
+
+```powershell
+python run_tests.py            # headless, all active discounts
+python run_tests.py --headed   # show the browser
+```
+
+Each active discount in `config/discounts.json` is tested in a fresh browser
+context. Baselines are measured once per unique `test_product_url` and reused.
+A JSON + TXT report lands in `reports/run_<timestamp>.{json,txt}`.
+
 ## Roadmap
 
 - [x] Project scaffold, config loader, safety guards, homepage opener
-- [ ] Product search by brand + product type
-- [ ] Add product to cart, read cart total
-- [ ] Apply discount code, read new total, compare to expected
-- [ ] Drive checkout up to (but not past) the payment step
-- [ ] Test runner that iterates all active discounts and writes a JSON report
+- [x] Add product to cart, read cart total
+- [x] Apply discount code, read new total, compare to expected
+- [x] Drive checkout up to (but not past) the payment step
+- [x] Test runner that iterates all active discounts and writes a JSON report
+- [ ] Contact-lens variant selection (sphere/BC/qty)
 - [ ] Streamlit dashboard for browsing reports
 - [ ] Nightly scheduled run (Windows Task Scheduler)
 - [ ] Expand to additional Alensa sites

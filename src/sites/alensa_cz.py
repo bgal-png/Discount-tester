@@ -39,9 +39,17 @@ PRICE_RE = re.compile(
 
 # ---------- bootstrap ----------
 
-def open_homepage(page: Page, screenshot_path: Path | None = None) -> SafePage:
+def open_homepage(page: Page, screenshot_path: Path | None = None,
+                  dc_code: str | None = None) -> SafePage:
+    """Open the homepage, optionally with a ?dc_code= coupon param applied.
+
+    When dc_code is supplied, the site captures the code into session state on
+    first page load — any product added afterwards inherits the discount in
+    the cart. This is much simpler than the cart-side form-fill flow.
+    """
     safe = SafePage(page, SafetyConfig(allowed_host=HOST))
-    safe.goto(BASE_URL, wait_until="domcontentloaded")
+    url = BASE_URL + (f"?dc_code={dc_code}" if dc_code else "")
+    safe.goto(url, wait_until="domcontentloaded")
     accept_cookies(safe)
     if screenshot_path:
         screenshot_path.parent.mkdir(parents=True, exist_ok=True)
@@ -88,12 +96,18 @@ def add_to_cart(safe: SafePage, product_url: str) -> None:
     add_btn = safe.page.locator("a.detail-addToBasket-button").first
     add_btn.wait_for(state="visible", timeout=10_000)
     safe.safe_click(add_btn, description="add-to-cart")
-    # The link is an AJAX call; wait for the basket badge / floating cart to
-    # update. The "Zobrazit košík" floating button appears after add.
+    # The link is an AJAX call; wait for the cart badge to update. The
+    # "Zobrazit košík" floating button appears after a successful add.
     try:
-        safe.page.wait_for_selector(".go-to-basket-btn", state="visible", timeout=5_000)
+        safe.page.wait_for_selector(".go-to-basket-btn", state="visible", timeout=8_000)
     except PWTimeout:
-        pass  # not fatal — we'll verify by reading the cart page next
+        pass
+    # Also wait for outstanding XHRs to finish, so the cart server-side state
+    # is committed before we navigate away.
+    try:
+        safe.page.wait_for_load_state("networkidle", timeout=8_000)
+    except PWTimeout:
+        pass
     safe.page.wait_for_timeout(500)
 
 
@@ -113,12 +127,34 @@ def parse_price_czk(text: str) -> float:
     return float(raw)
 
 
-def read_cart_total(safe: SafePage) -> float:
-    """Read the cart subtotal ('Mezisoučet' or 'Celkem' on the cart page)."""
-    loc = safe.page.locator("#snippet--basketCompletePrice .basket-total-price")
-    loc.wait_for(state="visible", timeout=10_000)
-    text = loc.inner_text()
-    return parse_price_czk(text)
+def read_cart_total(safe: SafePage, timeout_ms: int = 15_000) -> float:
+    """Read the cart subtotal ('Mezisoučet' or 'Celkem' on the cart page).
+
+    Tries the snippet selector first, falls back to a generic .basket-total-price
+    if the layout shifted, finally raises with a guess at the cart state.
+    """
+    page = safe.page
+    selectors = [
+        "#snippet--basketCompletePrice .basket-total-price",
+        ".basket-total-price",
+    ]
+    for sel in selectors:
+        loc = page.locator(sel).first
+        try:
+            loc.wait_for(state="visible", timeout=timeout_ms)
+            return parse_price_czk(loc.inner_text())
+        except PWTimeout:
+            continue
+    body = ""
+    try:
+        body = page.inner_text("body")[:500]
+    except Exception:
+        pass
+    empty_hint = "košík je prázdný" in body.lower() or "empty" in body.lower()
+    raise RuntimeError(
+        f"Cart total not visible after {timeout_ms}ms. "
+        f"{'Cart appears empty.' if empty_hint else 'Page may have failed to render.'}"
+    )
 
 
 # ---------- coupon ----------
