@@ -1,14 +1,13 @@
 """Streamlit dashboard: configure discounts, run tests, browse reports.
 
-Launch locally:
+Launch via the double-clickable start_dashboard.bat, or:
     streamlit run dashboard.py
 
-Or on Streamlit Community Cloud — see README "Deploy to Streamlit Cloud".
+Designed for local use — tests run on this machine via Playwright.
 """
 from __future__ import annotations
 
 import json
-import os
 import subprocess
 import sys
 from dataclasses import asdict
@@ -27,27 +26,6 @@ REPORTS_DIR = ROOT / "reports"
 
 GITHUB_REPO = "bgal-png/Discount-tester"
 GITHUB_EDIT_URL = f"https://github.com/{GITHUB_REPO}/edit/main/config/discounts.json"
-
-
-def _detect_cloud() -> bool:
-    """Detect Streamlit Community Cloud reliably.
-
-    The official env var (STREAMLIT_RUNTIME_ENVIRONMENT) isn't actually set
-    on Community Cloud despite being documented. The reliable signal is the
-    mount path: Community Cloud always exposes the repo under /mount/src/.
-    Belt-and-braces with a hostname check.
-    """
-    if str(ROOT).startswith("/mount/src/"):
-        return True
-    if os.environ.get("STREAMLIT_RUNTIME_ENVIRONMENT") == "cloud":
-        return True
-    # HOSTNAME on Streamlit Cloud containers starts with "streamlit-".
-    if os.environ.get("HOSTNAME", "").startswith("streamlit-"):
-        return True
-    return False
-
-
-IS_CLOUD = _detect_cloud()
 
 BLANK_DISCOUNT_TEMPLATE = {
     "name": "REPLACE — display name",
@@ -151,13 +129,11 @@ def results_dataframe(report: dict) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def run_tests_streaming(placeholder, headed: bool, push: bool = False) -> int:
+def run_tests_streaming(placeholder, headed: bool) -> int:
     """Run run_tests.py as a subprocess and stream its output into the UI."""
     cmd = [sys.executable, "run_tests.py"]
     if headed:
         cmd.append("--headed")
-    if push:
-        cmd.append("--push")
     proc = subprocess.Popen(
         cmd,
         cwd=str(ROOT),
@@ -194,14 +170,6 @@ st.caption(
 
 # --- Sidebar: config status ---
 with st.sidebar:
-    if IS_CLOUD:
-        st.info(
-            "**Cloud mode.** The alensa.cz WAF blocks Streamlit Cloud's "
-            "datacenter IPs, so tests run on **your PC**, not here. The "
-            "cloud dashboard is read-only for reports synced via GitHub. "
-            "See the **Run tests** tab for how."
-        )
-
     st.header("Configuration")
     try:
         cfg = load_config(CONFIG_PATH)
@@ -230,49 +198,9 @@ with tab_run:
 
     if not cfg:
         st.warning("Fix the configuration error first (see sidebar).")
-    elif IS_CLOUD:
-        # Cloud mode: tests can't run here because alensa.cz blocks the IP.
-        # Show instructions for running locally + a file uploader for ad-hoc
-        # one-off imports.
-        st.warning(
-            "**Tests can't run on Streamlit Cloud** — alensa.cz's WAF blocks "
-            "the cloud's outbound IPs (we have a screenshot proving it). "
-            "Run the tests on your own PC, then sync the report here."
-        )
-
-        st.markdown("### Run locally (your PC)")
-        st.code(
-            'cd "C:\\Users\\blank\\Desktop\\Random codes\\discount-tester"\n'
-            "python run_tests.py --push",
-            language="powershell",
-        )
-        st.caption(
-            "`--push` commits + pushes the report to GitHub. Streamlit Cloud "
-            "auto-redeploys in ~30 s, then you'll see the new run under "
-            "**Past reports**. Drop `--push` if you want to commit manually."
-        )
-
-        st.markdown("### Or upload a report file directly")
-        upload = st.file_uploader(
-            "Drop a `run_*.json` file to view it",
-            type=["json"],
-            help="Ad-hoc: view a report without pushing it to GitHub. "
-                 "This view is per-session.",
-        )
-        if upload is not None:
-            try:
-                report = json.loads(upload.read().decode("utf-8"))
-                st.subheader(f"Uploaded: {upload.name}")
-                summary = report.get("summary", {})
-                st.write({k: v for k, v in summary.items() if v > 0} or summary)
-                df = results_dataframe(report)
-                st.dataframe(df, use_container_width=True, hide_index=True)
-                render_diagnostics(report.get("results", []), key_prefix="upload")
-            except Exception as e:
-                st.error(f"Couldn't read that file: {e}")
     else:
         active = [d for d in cfg.discounts if d.active]
-        cols = st.columns([1, 1, 1, 2])
+        cols = st.columns([1, 1, 2])
         with cols[0]:
             headed = st.checkbox(
                 "Show browser",
@@ -280,25 +208,18 @@ with tab_run:
                 help="Run in a visible Chromium window instead of headless.",
             )
         with cols[1]:
-            push_after = st.checkbox(
-                "Push report to cloud",
-                value=True,
-                help="After the run, commit + push the report to GitHub so "
-                     "the cloud dashboard sees it. Needs git on PATH.",
-            )
-        with cols[2]:
             run_clicked = st.button(
                 f"▶ Run {len(active)} active discount(s)",
                 type="primary",
                 disabled=len(active) == 0,
             )
-        with cols[3]:
+        with cols[2]:
             st.caption("Headless ≈ 8–12 s per discount. Live log below.")
 
         if run_clicked:
             log_placeholder = st.empty()
             with st.spinner("Running..."):
-                rc = run_tests_streaming(log_placeholder, headed=headed, push=push_after)
+                rc = run_tests_streaming(log_placeholder, headed=headed)
             if rc == 0:
                 st.success("Run finished. Latest report below.")
             else:
