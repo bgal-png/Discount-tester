@@ -1,0 +1,34 @@
+{
+  "timestamp": "20260521_154232",
+  "site": "alensa.cz",
+  "currency": "CZK",
+  "summary": {
+    "PASS": 1,
+    "FAIL": 0,
+    "NOT_APPLIED": 0,
+    "ERROR": 0,
+    "SKIPPED_EXPIRED": 0
+  },
+  "results": [
+    {
+      "name": "Gelone contact solutions and drops - 20 %",
+      "code": "gel26care",
+      "product_url": "https://www.alensa.cz/roztok-gelone-360-ml",
+      "expected_type": "percentage",
+      "expected_value": 20.0,
+      "tolerance_pct": 1.0,
+      "baseline_czk": 199.0,
+      "observed_total_czk": 159.0,
+      "observed_discount_czk": 40.0,
+      "observed_discount_pct": 20.1,
+      "flash_text": "Slevový kód: gel26care (-20%)",
+      "flash_check": "ok",
+      "negative_status": "SKIPPED",
+      "negative_detail": null,
+      "status": "PASS",
+      "detail": "observed 20.1% vs expected 20.0% (delta 0.10pp ≤ 1.0pp)",
+      "duration_s": 8.0,
+      "diagnostics": null
+    }
+  ]
+}

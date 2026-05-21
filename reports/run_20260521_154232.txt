@@ -1,0 +1,4 @@
+Run 20260521_154232 — alensa.cz
+Summary: {'PASS': 1, 'FAIL': 0, 'NOT_APPLIED': 0, 'ERROR': 0, 'SKIPPED_EXPIRED': 0}
+
+[PASS       ] gel26care       (8.0s) — observed 20.1% vs expected 20.0% (delta 0.10pp ≤ 1.0pp)
