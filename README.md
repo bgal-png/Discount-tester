@@ -102,6 +102,38 @@ Each active discount is tested in a fresh browser context. Baselines are
 measured once per unique `test_product_url` and reused. A JSON + TXT report
 lands in `reports/run_<timestamp>.{json,txt}`.
 
+## Deploy to Streamlit Cloud
+
+The repo is preconfigured for [Streamlit Community Cloud](https://share.streamlit.io/):
+
+- `requirements.txt` pins `streamlit`, `pandas`, `playwright`
+- `packages.txt` installs the apt libraries Chromium needs on Debian
+- `dashboard.py` lazily runs `playwright install chromium` on first launch
+
+Steps:
+
+1. Push the repo to GitHub (already done at `bgal-png/Discount-tester`).
+2. In Streamlit Cloud, **New app** → pick this repo and `main` branch.
+3. Main file path: `dashboard.py`. Python version: 3.11+.
+4. Deploy. First launch takes 1–3 min while Chromium downloads (~150 MB).
+
+**Caveats to be aware of on the free tier:**
+
+- **Ephemeral filesystem** — `reports/` is wiped whenever the app restarts.
+  Always **Download** a report from the Past reports tab if you want to
+  keep it. Long-term history would need an external store (S3, GitHub
+  artifacts, a database) — easy to add later.
+- **Single 1 GB instance** — fine for sequential tests (~300 MB while a
+  browser is running) but not for heavy parallelism.
+- **Outbound IP is in the US/EU** — alensa.cz served from a non-CZ IP
+  generally still returns the Czech site (the URL `.cz` and `cs-CZ` locale
+  header force it), but if anything looks off (different prices, popups),
+  a non-CZ IP is the first thing to check. Test once on cloud and confirm
+  totals match a local run.
+
+If anything fails on first deploy, the most common cause is a missing apt
+library — add it to `packages.txt` and re-deploy.
+
 ## Roadmap
 
 - [x] Project scaffold, config loader, safety guards, homepage opener

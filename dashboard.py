@@ -1,11 +1,14 @@
 """Streamlit dashboard: configure discounts, run tests, browse reports.
 
-Launch:
+Launch locally:
     streamlit run dashboard.py
+
+Or on Streamlit Community Cloud — see README "Deploy to Streamlit Cloud".
 """
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from dataclasses import asdict
@@ -15,7 +18,31 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
-from src.config import load_config, ConfigError
+
+# ---------- one-time Chromium install (Streamlit Cloud) ----------
+# Streamlit Cloud installs the pip package but does NOT run `playwright install`.
+# On first launch we lazily install the browser into ~/.cache/ms-playwright.
+# Local installs already have it via `playwright install chromium`, so this is
+# a fast no-op there.
+@st.cache_resource(show_spinner="Installing Chromium for Playwright (first run only)...")
+def _ensure_chromium() -> bool:
+    try:
+        subprocess.run(
+            [sys.executable, "-m", "playwright", "install", "chromium"],
+            check=True, capture_output=True, text=True, timeout=600,
+        )
+        return True
+    except subprocess.CalledProcessError as e:
+        st.error(f"Failed to install Chromium: {e.stderr[-1000:]}")
+        return False
+    except Exception as e:
+        st.error(f"Chromium install error: {e}")
+        return False
+
+
+_ensure_chromium()
+
+from src.config import load_config, ConfigError  # noqa: E402
 
 ROOT = Path(__file__).parent
 CONFIG_PATH = ROOT / "config" / "discounts.json"
@@ -104,6 +131,13 @@ st.caption(
 
 # --- Sidebar: config status ---
 with st.sidebar:
+    if os.environ.get("STREAMLIT_RUNTIME_ENVIRONMENT") == "cloud":
+        st.info(
+            "Running on **Streamlit Cloud**. Reports are written to ephemeral "
+            "storage — they disappear when the app restarts. Download any "
+            "report you want to keep from the **Past reports** tab."
+        )
+
     st.header("Configuration")
     try:
         cfg = load_config(CONFIG_PATH)
