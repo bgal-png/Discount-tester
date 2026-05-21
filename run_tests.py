@@ -188,12 +188,16 @@ def classify(d: Discount, baseline: float, observed_total: float) -> tuple[str, 
     return "FAIL", f"observed -{discount} CZK vs expected -{d.value} CZK (delta {delta_czk} CZK > {allowed})"
 
 
-def run_one(p: Playwright, d: Discount, baseline: float, headed: bool
-            ) -> DiscountTestResult:
+def run_one(p: Playwright, d: Discount, product_url: str,
+            negative_url: Optional[str], baselines: dict[str, float],
+            headed: bool) -> DiscountTestResult:
+    """Run one (discount, product) test. baselines must contain product_url
+    (and negative_url if provided)."""
+    baseline = baselines[product_url]
     res = DiscountTestResult(
         name=d.name,
         code=d.code,
-        product_url=d.test_product_url or "",
+        product_url=product_url,
         expected_type=d.discount_type,
         expected_value=d.value,
         tolerance_pct=d.tolerance_pct,
@@ -202,7 +206,7 @@ def run_one(p: Playwright, d: Discount, baseline: float, headed: bool
     t0 = time.time()
     diag: dict = {}
     try:
-        m = measure_with_code(p, d.test_product_url, d.code, headed, diag_out=diag)
+        m = measure_with_code(p, product_url, d.code, headed, diag_out=diag)
         res.observed_total_czk = m.total
         res.observed_discount_czk = round(baseline - m.total, 2)
         if baseline:
@@ -211,35 +215,30 @@ def run_one(p: Playwright, d: Discount, baseline: float, headed: bool
         res.flash_check = check_flash(d.expected_flash_contains, m.flash_text)
         res.status, res.detail = classify(d, baseline, m.total)
 
-        # If the primary test passed but flash text is missing/wrong, downgrade.
         if res.status == "PASS" and res.flash_check not in (None, "ok", "skipped"):
             res.status = "FAIL"
             res.detail = f"{res.detail}; flash {res.flash_check}"
 
         # Optional negative test.
-        if d.non_matching_product_url:
+        if negative_url:
             try:
-                neg = measure_with_code(p, d.non_matching_product_url, d.code, headed)
-                # On non-matching product, expect total == baseline of that product
-                # (i.e. no discount). We don't have its baseline — but if the
-                # subtotal decreased noticeably we know the code leaked.
-                # Conservative check: any drop > 0.5% counts as leak.
-                neg_baseline = measure_baseline(p, d.non_matching_product_url, headed)
+                neg = measure_with_code(p, negative_url, d.code, headed)
+                neg_baseline = baselines.get(negative_url) or measure_baseline(p, negative_url, headed)
                 leak = neg_baseline - neg.total
                 leak_pct = 100 * leak / neg_baseline if neg_baseline else 0
                 if leak_pct > 0.5:
                     res.negative_status = "LEAKED"
                     res.negative_detail = (
-                        f"{d.non_matching_product_url} dropped {leak} CZK "
-                        f"({leak_pct:.1f}%) when code applied; restriction not enforced"
+                        f"{negative_url} dropped {leak} CZK ({leak_pct:.1f}%); "
+                        "restriction not enforced"
                     )
                     res.status = "FAIL"
                     res.detail = f"{res.detail}; NEGATIVE: {res.negative_detail}"
                 else:
                     res.negative_status = "PASS_NOT_APPLIED"
                     res.negative_detail = (
-                        f"{d.non_matching_product_url}: no discount applied "
-                        f"(baseline {neg_baseline} vs with-code {neg.total})"
+                        f"{negative_url}: no discount (baseline {neg_baseline} "
+                        f"vs with-code {neg.total})"
                     )
             except Exception as e:
                 res.negative_status = "ERROR"
@@ -255,6 +254,64 @@ def run_one(p: Playwright, d: Discount, baseline: float, headed: bool
         res.diagnostics = diag or None
     res.duration_s = round(time.time() - t0, 1)
     return res
+
+
+def discover_products(p: Playwright, active: list[Discount], headed: bool,
+                      limit_per_discount: int = 3
+                      ) -> dict[str, tuple[list[str], Optional[str]]]:
+    """For each active discount, resolve (positive_urls, negative_url).
+
+    Honors manual overrides (test_product_url / non_matching_product_url).
+    Otherwise scrapes the matching category listing on alensa.cz.
+
+    Returns a dict keyed by discount.code.
+    """
+    out: dict[str, tuple[list[str], Optional[str]]] = {}
+    # Use a single browser session for all scraping.
+    ctx = new_context(p, headed)
+    try:
+        page = ctx.new_page()
+        safe = alensa_cz.open_homepage(page)
+
+        # Cache listings within this session so two discounts targeting the
+        # same (brand, product_type) don't re-scrape.
+        positive_cache: dict[tuple, list[str]] = {}
+        negative_cache: dict[tuple, Optional[str]] = {}
+
+        for d in active:
+            # Positive products.
+            if d.test_product_url:
+                positives = [d.test_product_url]
+            else:
+                key = (d.applies_to.brand, d.applies_to.product_type, limit_per_discount)
+                if key not in positive_cache:
+                    cards = alensa_cz.find_products_in_category(
+                        safe,
+                        brand=d.applies_to.brand,
+                        product_type=d.applies_to.product_type,
+                        limit=limit_per_discount,
+                    )
+                    positive_cache[key] = [c.url for c in cards]
+                positives = positive_cache[key]
+
+            # Negative product.
+            if d.non_matching_product_url:
+                negative = d.non_matching_product_url
+            else:
+                nkey = (d.applies_to.brand, d.applies_to.product_type)
+                if nkey not in negative_cache:
+                    card = alensa_cz.find_non_matching_product(
+                        safe,
+                        exclude_brand=d.applies_to.brand,
+                        exclude_product_type=d.applies_to.product_type,
+                    )
+                    negative_cache[nkey] = card.url if card else None
+                negative = negative_cache[nkey]
+
+            out[d.code] = (positives, negative)
+    finally:
+        ctx.close()
+    return out
 
 
 def main() -> None:
@@ -283,9 +340,14 @@ def main() -> None:
         print("No active discounts in config — nothing to do.")
         return
 
-    missing = [d.code for d in active if not d.test_product_url]
+    # A discount must EITHER have test_product_url set, OR have applies_to
+    # set so we can auto-discover.
+    missing = [d.code for d in active
+               if not d.test_product_url
+               and not (d.applies_to.brand or d.applies_to.product_type)]
     if missing:
-        print(f"ERROR: these active discounts have no test_product_url: {missing}")
+        print(f"ERROR: these discounts need either test_product_url or "
+              f"applies_to (brand/product_type) for auto-discovery: {missing}")
         return
 
     print(f"Loaded {len(active)} active discount(s) for {cfg.site}")
@@ -297,10 +359,26 @@ def main() -> None:
     results: list[DiscountTestResult] = []
 
     with sync_playwright() as p:
-        # Baseline per unique product (avoids re-measuring for shared products).
+        # Phase 1: discover products (positive + negative) for each discount.
+        print(f"[discover] resolving product URLs for {len(active)} discount(s)...")
+        per_discount = discover_products(p, active, args.headed)
+        for d in active:
+            positives, negative = per_discount[d.code]
+            origin = "manual" if d.test_product_url else "auto"
+            print(f"  {d.code}: {len(positives)} positive(s) [{origin}]"
+                  + (", 1 negative" if negative else ""))
+            for u in positives:
+                print(f"     + {u}")
+            if negative:
+                print(f"     - {negative} (negative)")
+
+        # Phase 2: baseline per unique product across all positives + negatives.
         baselines: dict[str, float] = {}
-        unique_products = sorted({d.test_product_url for d in active})
         baseline_diags: dict[str, dict] = {}
+        unique_products = sorted(
+            {u for positives, _ in per_discount.values() for u in positives}
+            | {n for _, n in per_discount.values() if n}
+        )
         for url in unique_products:
             print(f"[baseline] {url}")
             diag: dict = {}
@@ -315,32 +393,49 @@ def main() -> None:
                 baselines[url] = float("nan")
                 baseline_diags[url] = diag
 
+        # Phase 3: per (discount, positive product) test.
         today = date.today()
-        # Each active discount.
         for d in active:
             if is_expired(d, today):
                 print(f"[skip] {d.code} expired {d.expires_at}")
                 results.append(DiscountTestResult(
-                    name=d.name, code=d.code, product_url=d.test_product_url,
+                    name=d.name, code=d.code, product_url="",
                     expected_type=d.discount_type, expected_value=d.value,
                     tolerance_pct=d.tolerance_pct,
                     status="SKIPPED_EXPIRED",
                     detail=f"expired {d.expires_at}",
                 ))
                 continue
-            print(f"[test] {d.code}  ({d.name})")
-            baseline = baselines[d.test_product_url]
-            if baseline != baseline:  # NaN
+
+            positives, negative = per_discount[d.code]
+            if not positives:
+                print(f"[skip] {d.code} — no products discovered "
+                      f"(brand={d.applies_to.brand}, type={d.applies_to.product_type})")
                 results.append(DiscountTestResult(
-                    name=d.name, code=d.code, product_url=d.test_product_url,
+                    name=d.name, code=d.code, product_url="",
                     expected_type=d.discount_type, expected_value=d.value,
                     tolerance_pct=d.tolerance_pct,
-                    status="ERROR", detail="baseline measurement failed",
-                    diagnostics=baseline_diags.get(d.test_product_url) or None,
+                    status="ERROR",
+                    detail="no matching products found in listing (variant-required "
+                           "types like contact_lenses are not yet supported)",
                 ))
                 continue
-            results.append(run_one(p, d, baseline, args.headed))
-            print(f"       -> {results[-1].status}: {results[-1].detail}")
+
+            for product_url in positives:
+                print(f"[test] {d.code} on {product_url}")
+                baseline = baselines[product_url]
+                if baseline != baseline:  # NaN
+                    results.append(DiscountTestResult(
+                        name=d.name, code=d.code, product_url=product_url,
+                        expected_type=d.discount_type, expected_value=d.value,
+                        tolerance_pct=d.tolerance_pct,
+                        status="ERROR", detail="baseline measurement failed",
+                        diagnostics=baseline_diags.get(product_url) or None,
+                    ))
+                    continue
+                results.append(run_one(p, d, product_url, negative,
+                                       baselines, args.headed))
+                print(f"       -> {results[-1].status}: {results[-1].detail}")
 
     # ---- Report ----
     summary = {

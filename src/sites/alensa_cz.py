@@ -26,6 +26,29 @@ HOST = "alensa.cz"
 BASE_URL = "https://www.alensa.cz/"
 CART_URL = "https://www.alensa.cz/nakup/kosik/"
 
+# Category listing pages on alensa.cz. solutions and eye_drops share one
+# page; split them by the product name prefix below.
+CATEGORY_LISTING_URLS: dict[str, Optional[str]] = {
+    "solutions":      "https://www.alensa.cz/roztoky-a-ocni-kapky.html",
+    "eye_drops":      "https://www.alensa.cz/roztoky-a-ocni-kapky.html",
+    "contact_lenses": "https://www.alensa.cz/kontaktni-cocky.html",
+    "glasses":        "https://www.alensa.cz/brylove-obroucky.html",
+    "sunglasses":     None,    # TODO: ask user for URL
+    "accessories":    None,    # TODO: ask user for URL
+}
+
+# When a listing page mixes product types, filter by what the data-name
+# attribute starts with (Czech).
+PRODUCT_TYPE_NAME_PREFIXES: dict[str, tuple[str, ...]] = {
+    "solutions":  ("Roztok",),
+    "eye_drops":  ("Oční kapky", "Kapky"),
+}
+
+# Product types that require variant selection (sphere/BC/qty etc.) before
+# add-to-cart succeeds. We skip these in auto-discovery until variant
+# handling lands.
+VARIANT_REQUIRED_TYPES = {"contact_lenses"}
+
 COOKIE_ACCEPT_TEXTS = [
     "Pokračovat", "Souhlasím", "Přijmout vše", "Přijmout", "Rozumím",
     "Accept all", "Accept", "OK",
@@ -58,6 +81,114 @@ def open_homepage(page: Page, screenshot_path: Path | None = None,
         screenshot_path.parent.mkdir(parents=True, exist_ok=True)
         page.screenshot(path=str(screenshot_path), full_page=False)
     return safe
+
+
+@dataclass
+class ProductCard:
+    url: str
+    product_id: str
+    name: str
+    price_czk: Optional[float]
+
+
+def list_products_on_category_page(safe: SafePage, category_url: str
+                                   ) -> list[ProductCard]:
+    """Visit a listing page and return its product cards."""
+    safe.goto(category_url, wait_until="domcontentloaded")
+    safe.page.wait_for_timeout(1500)
+    cards: list[ProductCard] = []
+    for el in safe.page.locator("a.product").all():
+        try:
+            href = el.get_attribute("href") or ""
+            if not href:
+                continue
+            pid = el.get_attribute("data-id") or ""
+            name = el.get_attribute("data-name") or ""
+            price_raw = el.get_attribute("data-price")
+            price = float(price_raw) if price_raw else None
+            cards.append(ProductCard(
+                url=href.strip(),
+                product_id=pid,
+                name=name.strip(),
+                price_czk=price,
+            ))
+        except Exception:
+            continue
+    return cards
+
+
+def find_products_in_category(safe: SafePage, *,
+                              product_type: Optional[str],
+                              brand: Optional[str] = None,
+                              limit: int = 3) -> list[ProductCard]:
+    """Return up to `limit` product cards matching brand + product_type.
+
+    Returns [] if the category has no listing URL configured or the product
+    type requires variants (we can't add those to cart yet).
+    """
+    if product_type in VARIANT_REQUIRED_TYPES:
+        return []
+    url = CATEGORY_LISTING_URLS.get(product_type) if product_type else None
+    if not url:
+        return []
+    cards = list_products_on_category_page(safe, url)
+    prefixes = PRODUCT_TYPE_NAME_PREFIXES.get(product_type or "")
+    out: list[ProductCard] = []
+    brand_lc = brand.lower() if brand else None
+    for c in cards:
+        if prefixes and not any(c.name.startswith(p) for p in prefixes):
+            continue
+        if brand_lc and brand_lc not in c.name.lower():
+            continue
+        out.append(c)
+        if len(out) >= limit:
+            break
+    return out
+
+
+def find_non_matching_product(safe: SafePage, *,
+                              exclude_product_type: Optional[str],
+                              exclude_brand: Optional[str] = None
+                              ) -> Optional[ProductCard]:
+    """Return a single product that doesn't match the given brand+type.
+
+    Strategy:
+      1. If exclude_brand is set: prefer a SAME product_type / DIFFERENT brand
+         product (tests the brand restriction directly, and stays in a
+         category we know how to add to cart).
+      2. Otherwise: pick a product from a different product_type entirely
+         (different category page).
+
+    Skips contact lenses (variant-required) in either strategy.
+    """
+    # Strategy 1: same product_type, different brand.
+    if exclude_brand and exclude_product_type and \
+            exclude_product_type not in VARIANT_REQUIRED_TYPES:
+        url = CATEGORY_LISTING_URLS.get(exclude_product_type)
+        if url:
+            prefixes = PRODUCT_TYPE_NAME_PREFIXES.get(exclude_product_type)
+            for c in list_products_on_category_page(safe, url):
+                if prefixes and not any(c.name.startswith(p) for p in prefixes):
+                    continue
+                if exclude_brand.lower() in c.name.lower():
+                    continue
+                return c
+
+    # Strategy 2: different product_type. Skip listings whose URL is the
+    # same as the excluded type's listing (solutions and eye_drops share one).
+    excluded_url = (CATEGORY_LISTING_URLS.get(exclude_product_type)
+                    if exclude_product_type else None)
+    for ptype, url in CATEGORY_LISTING_URLS.items():
+        if not url or url == excluded_url or ptype in VARIANT_REQUIRED_TYPES:
+            continue
+        prefixes = PRODUCT_TYPE_NAME_PREFIXES.get(ptype)
+        for c in list_products_on_category_page(safe, url):
+            if prefixes and not any(c.name.startswith(p) for p in prefixes):
+                continue
+            if exclude_brand and exclude_brand.lower() in c.name.lower():
+                continue
+            return c
+    return None
 
 
 def read_applied_coupon_info(safe: SafePage) -> Optional[str]:

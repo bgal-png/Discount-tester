@@ -12,7 +12,7 @@
       "value": 20,
       "tolerance_pct": 1.0,
 
-      "test_product_url": "https://www.alensa.cz/roztok-gelone-360-ml",
+      "test_product_url": null,
       "non_matching_product_url": null,
 
       "expected_flash_contains": [
