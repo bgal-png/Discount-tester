@@ -1,0 +1,4 @@
+Run 20260521_153847 — alensa.cz
+Summary: {'PASS': 0, 'FAIL': 0, 'NOT_APPLIED': 0, 'ERROR': 1, 'SKIPPED_EXPIRED': 0}
+
+[ERROR      ] gel26care       (45.1s) — RuntimeError: Cart total not visible after 15000ms. Cart appears empty.
