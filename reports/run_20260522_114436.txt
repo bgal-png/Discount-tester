@@ -1,0 +1,12 @@
+Run 20260522_114436 — alensa.cz
+Summary: {'PASS': 8, 'FAIL': 0, 'NOT_APPLIED': 0, 'ERROR': 1, 'SKIPPED_EXPIRED': 0}
+
+[PASS       ] gel26care       (15.6s) — observed 20.1% vs expected 20.0% (delta 0.10pp ≤ 1.0pp)
+[ERROR      ] gel26care       (37.7s) — RuntimeError: Cart total not visible after 15000ms. Cart appears empty.
+[PASS       ] gel26care       (15.5s) — observed 20.05% vs expected 20.0% (delta 0.05pp ≤ 1.0pp)
+[PASS       ] 8OEO-LNKH-NYGC  (35.8s) — observed 30.03% vs expected 30.0% (delta 0.03pp ≤ 1.0pp)
+[PASS       ] 8OEO-LNKH-NYGC  (35.6s) — observed 30.03% vs expected 30.0% (delta 0.03pp ≤ 1.0pp)
+[PASS       ] 8OEO-LNKH-NYGC  (35.2s) — observed 30.03% vs expected 30.0% (delta 0.03pp ≤ 1.0pp)
+[PASS       ] 25zskla         (30.6s) — observed 8.88% vs expected 8.88% (delta 0.00pp ≤ 1.0pp)
+[PASS       ] 25zskla         (33.2s) — observed 8.88% vs expected 8.88% (delta 0.00pp ≤ 1.0pp)
+[PASS       ] 25zskla         (34.6s) — observed 8.88% vs expected 8.88% (delta 0.00pp ≤ 1.0pp)

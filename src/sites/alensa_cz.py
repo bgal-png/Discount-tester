@@ -425,18 +425,25 @@ def _configure_lenses(safe: SafePage) -> None:
         pass
     page.wait_for_timeout(1500)
 
-    _set_select_by_label(page, "select.primary-sph", GLASSES_LENS_SPH)
-    _set_select_by_label(page, "select.secondary-sph", GLASSES_LENS_SPH)
-    _set_select_by_value(page, "select.primary-pd", GLASSES_LENS_PD)
-    _set_select_by_value(page, "select.secondary-pd", GLASSES_LENS_PD)
+    # Each select change fires a server-side AJAX that updates state. If
+    # we fire them too fast, an in-flight request from the previous select
+    # is replaced by the next one, and the first eye's parameter ends up
+    # blank in the saved state. Wait for AJAX to settle between each.
+    def _settle():
+        try:
+            page.wait_for_load_state("networkidle", timeout=6_000)
+        except PWTimeout:
+            pass
+        page.wait_for_timeout(500)
 
-    # Let the last AJAX submit finish so the URL/state are committed
-    # server-side before we reload.
-    try:
-        page.wait_for_load_state("networkidle", timeout=8_000)
-    except PWTimeout:
-        pass
-    page.wait_for_timeout(1000)
+    _set_select_by_label(page, "select.primary-sph", GLASSES_LENS_SPH)
+    _settle()
+    _set_select_by_label(page, "select.secondary-sph", GLASSES_LENS_SPH)
+    _settle()
+    _set_select_by_value(page, "select.primary-pd", GLASSES_LENS_PD)
+    _settle()
+    _set_select_by_value(page, "select.secondary-pd", GLASSES_LENS_PD)
+    _settle()
 
     # The hydration-bug workaround: reload so the add-to-cart button
     # becomes functional. URL holds the config, so we land back on a

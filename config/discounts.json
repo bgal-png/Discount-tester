@@ -80,11 +80,11 @@
       "name": "Sleva 25 % na jakákoli brýlová skla",
       "code": "25zskla",
       "description": "25% off any spectacle lenses. Per backend: Included Group #1 = 'Items type - Lenses for glasses' only. 'Only for complete glasses' checkbox is unchecked. Infinity uses.",
-      "active": false,
+      "active": true,
 
       "discount_type": "percentage",
-      "value": 25,
-      "tolerance_pct": 25.0,
+      "value": 8.88,
+      "tolerance_pct": 1.0,
 
       "test_product_url": null,
       "non_matching_product_url": null,
@@ -107,7 +107,7 @@
         "min_basket_czk": null,
         "delivery_method": null
       },
-      "notes": "Lens-only discount. Runner picks a glasses frame + adds with single-vision lenses (Brýle na dálku, SPH -1.00, PD 30). Observed % vs cart total will be much less than 25% because the discount only hits the lens portion of the bundle, not the frame. Tolerance set wide (25pp) for first run — we'll calibrate once we see what % the bundle settles on."
+      "notes": "Lens-only discount. Backend value = 25% off lens portion, but our runner observes % off basket total (frame 899 + BASIC lens 498 = 1397; 25% of 498 = 124.50; 124.50/1397 = 8.91%). value=8.88 is the empirical observation. If alensa changes the BASIC lens price or this discount's % rate, the observed % shifts and this will FAIL — that's correct behaviour. To re-calibrate, run the test once, read 'observed %' from the report, update value to match."
     }
   ]
 }
