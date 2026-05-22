@@ -1,0 +1,6 @@
+Run 20260522_115330 — alensa.cz
+Summary: {'PASS': 2, 'FAIL': 0, 'NOT_APPLIED': 0, 'ERROR': 1, 'SKIPPED_EXPIRED': 0}
+
+[PASS       ] 25zskla         (31.7s) — observed 8.88% vs expected 8.88% (delta 0.00pp ≤ 1.0pp)
+[ERROR      ] 25zskla         (0.0s) — baseline measurement failed
+[PASS       ] 25zskla         (31.4s) — observed 8.88% vs expected 8.88% (delta 0.00pp ≤ 1.0pp)

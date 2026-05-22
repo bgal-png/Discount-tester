@@ -34,6 +34,38 @@ from src.safety import SafetyViolation
 
 DIAG_DIR = Path("reports") / "diagnostics"
 
+# alensa.cz occasionally fails to commit a cart add (especially the
+# lens-configurator path's first attempt) — site flakiness, not a bug
+# on our side. Retry the measurement once before giving up.
+MEASUREMENT_RETRIES = 1
+
+
+def with_retry(fn, *args, **kwargs):
+    """Call fn(*args, **kwargs) up to MEASUREMENT_RETRIES + 1 times.
+
+    Keyword `diag_out`, if present, gets a fresh dict each attempt so
+    we only capture diagnostics from the FINAL (failing) attempt.
+    Returns fn's result, or re-raises the last exception.
+    """
+    last_exc = None
+    diag_out = kwargs.get("diag_out")
+    label = kwargs.pop("_retry_label", "measurement")
+    for attempt in range(MEASUREMENT_RETRIES + 1):
+        # Fresh diag dict per attempt so earlier-attempt screenshots don't
+        # mask the final failure state.
+        if diag_out is not None:
+            diag_out.clear()
+        try:
+            return fn(*args, **kwargs)
+        except Exception as e:
+            last_exc = e
+            if attempt < MEASUREMENT_RETRIES:
+                print(f"           [retry] {label} attempt {attempt + 1} "
+                      f"failed ({type(e).__name__}); retrying...")
+                continue
+            raise
+    raise last_exc  # unreachable, but mypy-friendly
+
 
 def save_diagnostics(page, tag: str) -> dict:
     """Capture screenshot + HTML + URL/title when something goes wrong.
@@ -217,8 +249,11 @@ def run_one(p: Playwright, d: Discount, product_url: str,
     t0 = time.time()
     diag: dict = {}
     try:
-        m = measure_with_code(p, product_url, d.code, headed,
-                              diag_out=diag, cart_mode=mode)
+        m = with_retry(
+            measure_with_code, p, product_url, d.code, headed,
+            diag_out=diag, cart_mode=mode,
+            _retry_label=f"with-code {d.code} on {product_url}",
+        )
         res.observed_total_czk = m.total
         res.observed_discount_czk = round(baseline - m.total, 2)
         if baseline:
@@ -234,10 +269,15 @@ def run_one(p: Playwright, d: Discount, product_url: str,
         # Optional negative test.
         if negative_url:
             try:
-                neg = measure_with_code(p, negative_url, d.code, headed,
-                                        cart_mode=mode)
-                neg_baseline = baselines.get(f"{negative_url}#{mode}") or \
-                    measure_baseline(p, negative_url, headed, cart_mode=mode)
+                neg = with_retry(
+                    measure_with_code, p, negative_url, d.code, headed,
+                    cart_mode=mode,
+                    _retry_label=f"negative {d.code} on {negative_url}",
+                )
+                neg_baseline = baselines.get(f"{negative_url}#{mode}") or with_retry(
+                    measure_baseline, p, negative_url, headed, cart_mode=mode,
+                    _retry_label=f"negative baseline {negative_url}",
+                )
                 leak = neg_baseline - neg.total
                 leak_pct = 100 * leak / neg_baseline if neg_baseline else 0
                 if leak_pct > 0.5:
@@ -423,9 +463,11 @@ def main() -> None:
             print(f"[baseline] {url} (cart_mode={mode})")
             diag: dict = {}
             try:
-                baselines[key] = measure_baseline(p, url, args.headed,
-                                                  diag_out=diag,
-                                                  cart_mode=mode)
+                baselines[key] = with_retry(
+                    measure_baseline, p, url, args.headed,
+                    diag_out=diag, cart_mode=mode,
+                    _retry_label=f"baseline {url}",
+                )
                 print(f"           {baselines[key]} CZK")
             except Exception as e:
                 print(f"           ERROR measuring baseline: {e}")

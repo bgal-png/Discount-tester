@@ -1,0 +1,6 @@
+Run 20260522_115906 — alensa.cz
+Summary: {'PASS': 3, 'FAIL': 0, 'NOT_APPLIED': 0, 'ERROR': 0, 'SKIPPED_EXPIRED': 0}
+
+[PASS       ] 25zskla         (73.3s) — observed 8.88% vs expected 8.88% (delta 0.00pp ≤ 1.0pp)
+[PASS       ] 25zskla         (31.5s) — observed 8.88% vs expected 8.88% (delta 0.00pp ≤ 1.0pp)
+[PASS       ] 25zskla         (31.6s) — observed 8.88% vs expected 8.88% (delta 0.00pp ≤ 1.0pp)
