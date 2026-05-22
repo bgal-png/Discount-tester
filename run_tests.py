@@ -278,12 +278,16 @@ def discover_products(p: Playwright, active: list[Discount], headed: bool,
         positive_cache: dict[tuple, list[str]] = {}
         negative_cache: dict[tuple, Optional[str]] = {}
 
+        def _brand_key(b):
+            return tuple(b) if isinstance(b, list) else b
+
         for d in active:
+            brand_k = _brand_key(d.applies_to.brand)
             # Positive products.
             if d.test_product_url:
                 positives = [d.test_product_url]
             else:
-                key = (d.applies_to.brand, d.applies_to.product_type, limit_per_discount)
+                key = (brand_k, d.applies_to.product_type, limit_per_discount)
                 if key not in positive_cache:
                     cards = alensa_cz.find_products_in_category(
                         safe,
@@ -298,7 +302,7 @@ def discover_products(p: Playwright, active: list[Discount], headed: bool,
             if d.non_matching_product_url:
                 negative = d.non_matching_product_url
             else:
-                nkey = (d.applies_to.brand, d.applies_to.product_type)
+                nkey = (brand_k, d.applies_to.product_type)
                 if nkey not in negative_cache:
                     card = alensa_cz.find_non_matching_product(
                         safe,

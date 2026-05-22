@@ -250,22 +250,58 @@ def accept_cookies(safe: SafePage, timeout_ms: int = 5000) -> bool:
 # ---------- product / cart ----------
 
 def add_to_cart(safe: SafePage, product_url: str) -> None:
-    """Navigate to a product URL and click 'Vložit do košíku'.
+    """Navigate to a product URL and add it to the cart.
 
-    Does NOT handle required variant selection — call this for variant-free
-    products only (eye drops, solution, accessories, etc.).
+    Dispatches based on what the page actually exposes:
+      - simple: 'Vložit do košíku' link (solutions, eye drops, accessories)
+      - glasses configurator entered from frame page: 'Vybrat skla' link
+      - glasses configurator landed-on directly: alensa redirects some
+        dioptric frame URLs straight to /katalog/lenses-selector-detail/...
+        in which case 'Brýle na dálku' (lens type) is already visible
+    Contact lenses (variant-required) are still not handled.
     """
+    import time as _time
     safe.goto(product_url, wait_until="domcontentloaded")
-    safe.page.wait_for_timeout(800)
-    # Banner sometimes reappears on a fresh navigation if consent wasn't saved.
+    safe.page.wait_for_timeout(500)
     accept_cookies(safe, timeout_ms=2000)
 
-    add_btn = safe.page.locator("a.detail-addToBasket-button").first
-    add_btn.wait_for(state="visible", timeout=10_000)
-    safe.safe_click(add_btn, description="add-to-cart")
-    # The AJAX add updates the cart badge; the "Zobrazit košík" floating
-    # button appears after a successful add. Wait for that to confirm the
-    # add actually committed before we navigate away.
+    page = safe.page
+
+    # Some glasses-frame URLs JS-redirect to /katalog/lenses-selector-detail/...
+    # only after a noticeable delay, and alensa.cz analytics keep the network
+    # busy so wait_for_load_state('networkidle') is unreliable. Poll for one
+    # of the three entry points to appear, up to 15 s.
+    deadline = _time.time() + 15.0
+    while _time.time() < deadline:
+        if _safe_is_visible(page.locator("a.detail-addToBasket-button").first, 250):
+            _add_simple(safe)
+            return
+        if "/lenses-selector-detail/" in page.url or \
+                _safe_is_visible(page.locator("a:has-text('Brýle na dálku')").first, 250):
+            _add_glasses(safe, skip_select_lenses=True)
+            return
+        if _safe_is_visible(page.locator("a:has-text('Vybrat skla')").first, 250):
+            _add_glasses(safe, skip_select_lenses=False)
+            return
+        page.wait_for_timeout(500)
+
+    raise RuntimeError(
+        f"Couldn't find an add-to-cart entry on {product_url} after 15 s "
+        f"(landed at {page.url!r}; no 'Vložit do košíku', 'Vybrat skla', "
+        "or 'Brýle na dálku' visible)"
+    )
+
+
+def _safe_is_visible(locator, timeout_ms: int) -> bool:
+    try:
+        return locator.is_visible(timeout=timeout_ms)
+    except Exception:
+        return False
+
+
+def _wait_for_basket_committed(safe: SafePage) -> None:
+    """After an AJAX add-to-cart, wait for the floating cart button + idle
+    network so server-side state has settled before we navigate away."""
     try:
         safe.page.wait_for_selector(".go-to-basket-btn", state="visible", timeout=8_000)
     except PWTimeout:
@@ -275,6 +311,96 @@ def add_to_cart(safe: SafePage, product_url: str) -> None:
     except PWTimeout:
         pass
     safe.page.wait_for_timeout(500)
+
+
+def _add_simple(safe: SafePage) -> None:
+    """Click the direct 'Vložit do košíku' link (solutions/drops flow)."""
+    btn = safe.page.locator("a.detail-addToBasket-button").first
+    btn.wait_for(state="visible", timeout=10_000)
+    safe.safe_click(btn, description="add-to-cart-simple")
+    _wait_for_basket_committed(safe)
+
+
+# Default lens parameters for the glasses-frame configurator. Values picked
+# to be valid in every dropdown alensa.cz offers — small SPH, narrow PD.
+# The discount being tested usually applies to the whole bundle, so the
+# specific lens choice doesn't matter for math, only that it's valid.
+GLASSES_LENS_SPH = "-1.00"
+GLASSES_LENS_PD = "30"
+
+
+def _add_glasses(safe: SafePage, *, skip_select_lenses: bool = False) -> None:
+    """Configurator flow for dioptric glasses: pick lens type, fill SPH+PD
+    for both eyes, then add to cart.
+
+    Click path:
+      1. 'Vybrat skla' on the frame product page (skipped if alensa
+         already redirected us to /katalog/lenses-selector-detail/...)
+      2. 'Brýle na dálku' (single-vision distance) on the lens-type screen
+      3. Fill SPH (both eyes) and PD (both eyes)
+      4. 'Vložit do košíku' on the configurator's add-to-basket button
+    """
+    page = safe.page
+
+    # Cookie banner can reappear on the lens-selector subdomain; dismiss
+    # again so it doesn't intercept clicks on "Brýle na dálku" etc.
+    accept_cookies(safe, timeout_ms=2000)
+
+    # Step 1: enter the lens selector (skip when we landed on it directly).
+    if not skip_select_lenses:
+        select_lenses = page.locator("a:has-text('Vybrat skla')").first
+        select_lenses.wait_for(state="visible", timeout=10_000)
+        safe.safe_click(select_lenses, description="select-lenses")
+        try:
+            page.wait_for_load_state("networkidle", timeout=10_000)
+        except PWTimeout:
+            pass
+        page.wait_for_timeout(500)
+        # And again after the navigation to the selector page.
+        accept_cookies(safe, timeout_ms=2000)
+
+    # Step 2: pick "Brýle na dálku" (single-vision distance glasses) —
+    # simplest option, asks for just SPH + PD.
+    distance = page.locator("a.type-wrapper-with-image:has-text('Brýle na dálku')").first
+    distance.wait_for(state="visible", timeout=10_000)
+    safe.safe_click(distance, description="distance-glasses")
+    try:
+        page.wait_for_load_state("networkidle", timeout=10_000)
+    except PWTimeout:
+        pass
+    page.wait_for_timeout(500)
+
+    # Step 3: fill SPH for both eyes (right eye uses class .primary-sph,
+    # left eye uses .secondary-sph). Option labels match diopter values
+    # like "-1.00". PD selects are .primary-pd / .secondary-pd; option
+    # values match the number directly (e.g. "30").
+    sph_selects = page.locator(
+        "select.primary-sph, select.secondary-sph"
+    ).all()
+    if len(sph_selects) < 2:
+        raise RuntimeError(
+            f"Expected 2 SPH selects on the lens configurator, found {len(sph_selects)}"
+        )
+    for sel in sph_selects:
+        sel.select_option(label=GLASSES_LENS_SPH)
+
+    pd_selects = page.locator(
+        "select.primary-pd, select.secondary-pd"
+    ).all()
+    if len(pd_selects) < 2:
+        raise RuntimeError(
+            f"Expected 2 PD selects on the lens configurator, found {len(pd_selects)}"
+        )
+    for sel in pd_selects:
+        sel.select_option(value=GLASSES_LENS_PD)
+
+    page.wait_for_timeout(500)
+
+    # Step 4: add the configured bundle to the cart.
+    add_btn = page.locator("a.btn-add-to-basket").first
+    add_btn.wait_for(state="visible", timeout=10_000)
+    safe.safe_click(add_btn, description="add-to-cart-glasses")
+    _wait_for_basket_committed(safe)
 
 
 def go_to_cart(safe: SafePage) -> None:

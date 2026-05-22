@@ -1,0 +1,9 @@
+Run 20260522_083325 — alensa.cz
+Summary: {'PASS': 3, 'FAIL': 0, 'NOT_APPLIED': 0, 'ERROR': 3, 'SKIPPED_EXPIRED': 0}
+
+[PASS       ] gel26care       (17.4s) — observed 20.1% vs expected 20.0% (delta 0.10pp ≤ 1.0pp)
+[PASS       ] gel26care       (16.0s) — observed 20.2% vs expected 20.0% (delta 0.20pp ≤ 1.0pp)
+[PASS       ] gel26care       (17.3s) — observed 20.05% vs expected 20.0% (delta 0.05pp ≤ 1.0pp)
+[ERROR      ] 8OEO-LNKH-NYGC  (0.0s) — baseline measurement failed
+[ERROR      ] 8OEO-LNKH-NYGC  (0.0s) — baseline measurement failed
+[ERROR      ] 8OEO-LNKH-NYGC  (0.0s) — baseline measurement failed
