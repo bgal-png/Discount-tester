@@ -1,0 +1,4 @@
+Run 20260522_130254 — alensa.cz
+Summary: {'PASS': 0, 'FAIL': 0, 'NOT_APPLIED': 0, 'ERROR': 1, 'SKIPPED_EXPIRED': 0}
+
+[ERROR      ] 05flashsale26   (0.0s) — no matching products found in listing (variant-required types like contact_lenses are not yet supported)

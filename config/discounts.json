@@ -7,24 +7,19 @@
       "code": "gel26care",
       "description": "Stacey - Gelone Voucher 2026. 20 % off Gelone solutions and drops.",
       "active": true,
-
       "discount_type": "percentage",
       "value": 20,
       "tolerance_pct": 1.0,
-
       "test_product_url": null,
       "non_matching_product_url": null,
-
       "expected_flash_contains": [
         "gel26care",
         "-20%"
       ],
-
       "expires_at": null,
       "usage_limit": null,
       "combination_forbidden": true,
       "min_items": null,
-
       "applies_to": {
         "brand": "Gelone",
         "product_type": "solutions"
@@ -40,35 +35,51 @@
       "code": "8OEO-LNKH-NYGC",
       "description": "Stacey - České dráhy, 1000 unikátních kódů. Common code: ceskedrahybryle.",
       "active": true,
-
       "discount_type": "percentage",
       "value": 30,
       "tolerance_pct": 1.0,
-
       "test_product_url": null,
       "non_matching_product_url": null,
-
       "expected_flash_contains": [
         "8OEO-LNKH-NYGC",
         "-30%"
       ],
-
       "expires_at": null,
       "usage_limit": 1,
       "combination_forbidden": true,
       "min_items": null,
-
       "applies_to": {
         "brand": [
-          "Polaroid", "Tommy Hilfiger", "Boss by Hugo Boss", "Marc Jacobs",
-          "Moschino", "Carolina Herrera", "Carrera", "Crullé", "LeWish",
-          "Marisio", "Kimikado", "Chiara Ferragni", "David Beckham",
-          "Dsquared2", "Fossil", "Havaianas", "Hugo by Hugo Boss",
-          "Jimmy Choo", "Kate Spade", "Levi", "Missoni", "Pierre Cardin",
+          "Polaroid",
+          "Tommy Hilfiger",
+          "Boss by Hugo Boss",
+          "Marc Jacobs",
+          "Moschino",
+          "Carolina Herrera",
+          "Carrera",
+          "Crullé",
+          "LeWish",
+          "Marisio",
+          "Kimikado",
+          "Chiara Ferragni",
+          "David Beckham",
+          "Dsquared2",
+          "Fossil",
+          "Havaianas",
+          "Hugo by Hugo Boss",
+          "Jimmy Choo",
+          "Kate Spade",
+          "Levi",
+          "Missoni",
+          "Pierre Cardin",
           "Under Armour"
         ],
         "product_type": "glasses",
-        "excluded_brands": ["Zeiss", "Hoya", "Nikon"]
+        "excluded_brands": [
+          "Zeiss",
+          "Hoya",
+          "Nikon"
+        ]
       },
       "conditions": {
         "min_basket_czk": null,
@@ -81,23 +92,18 @@
       "code": "25zskla",
       "description": "25% off any spectacle lenses. Per backend: Included Group #1 = 'Items type - Lenses for glasses' only. 'Only for complete glasses' checkbox is unchecked. Infinity uses.",
       "active": true,
-
       "discount_type": "percentage",
       "value": 8.88,
       "tolerance_pct": 1.0,
-
       "test_product_url": null,
       "non_matching_product_url": null,
-
       "expected_flash_contains": [
         "25zskla"
       ],
-
       "expires_at": null,
       "usage_limit": null,
       "combination_forbidden": true,
       "min_items": null,
-
       "applies_to": {
         "brand": null,
         "product_type": "lenses_for_glasses",
@@ -108,6 +114,35 @@
         "delivery_method": null
       },
       "notes": "Lens-only discount. Backend value = 25% off lens portion, but our runner observes % off basket total (frame 899 + BASIC lens 498 = 1397; 25% of 498 = 124.50; 124.50/1397 = 8.91%). value=8.88 is the empirical observation. If alensa changes the BASIC lens price or this discount's % rate, the observed % shifts and this will FAIL — that's correct behaviour. To re-calibrate, run the test once, read 'observed %' from the report, update value to match."
+    },
+    {
+      "name": "10% on all contact lenses",
+      "code": "05flashsale26",
+      "description": "10% on all contact lenses",
+      "active": true,
+      "discount_type": "percentage",
+      "value": 10.0,
+      "tolerance_pct": 1.0,
+      "test_product_url": null,
+      "non_matching_product_url": null,
+      "expected_flash_contains": [
+        "05flashsale26",
+        "-10%"
+      ],
+      "expires_at": null,
+      "usage_limit": null,
+      "combination_forbidden": true,
+      "min_items": null,
+      "applies_to": {
+        "brand": null,
+        "product_type": "contact_lenses",
+        "excluded_brands": []
+      },
+      "conditions": {
+        "min_basket_czk": null,
+        "delivery_method": null
+      },
+      "notes": ""
     }
   ]
 }

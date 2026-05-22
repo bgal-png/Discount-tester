@@ -1,0 +1,34 @@
+{
+  "timestamp": "20260522_130254",
+  "site": "alensa.cz",
+  "currency": "CZK",
+  "summary": {
+    "PASS": 0,
+    "FAIL": 0,
+    "NOT_APPLIED": 0,
+    "ERROR": 1,
+    "SKIPPED_EXPIRED": 0
+  },
+  "results": [
+    {
+      "name": "10% on all contact lenses",
+      "code": "05flashsale26",
+      "product_url": "",
+      "expected_type": "percentage",
+      "expected_value": 10.0,
+      "tolerance_pct": 1.0,
+      "baseline_czk": null,
+      "observed_total_czk": null,
+      "observed_discount_czk": null,
+      "observed_discount_pct": null,
+      "flash_text": null,
+      "flash_check": null,
+      "negative_status": null,
+      "negative_detail": null,
+      "status": "ERROR",
+      "detail": "no matching products found in listing (variant-required types like contact_lenses are not yet supported)",
+      "duration_s": 0.0,
+      "diagnostics": null
+    }
+  ]
+}

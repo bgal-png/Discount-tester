@@ -51,10 +51,14 @@ PRODUCT_TYPE_NAME_PREFIXES: dict[str, tuple[str, ...]] = {
     "eye_drops":  ("Oční kapky", "Kapky"),
 }
 
-# Product types that require variant selection (sphere/BC/qty etc.) before
-# add-to-cart succeeds. We skip these in auto-discovery until variant
-# handling lands.
-VARIANT_REQUIRED_TYPES = {"contact_lenses"}
+# Product types that require variant selection but we DON'T yet handle.
+# Empty for now — contact_lenses are handled via _add_contact_lens.
+VARIANT_REQUIRED_TYPES: set[str] = set()
+
+# Default contact-lens sphere/diopter to pick when the page doesn't pre-select
+# one. Most lens products carry "-1.00" as a valid option. The runner falls
+# back to "the first non-placeholder option" if -1.00 isn't listed.
+CONTACT_LENS_DEFAULT_SPH = "-1.00"
 
 COOKIE_ACCEPT_TEXTS = [
     "Pokračovat", "Souhlasím", "Přijmout vše", "Přijmout", "Rozumím",
@@ -281,9 +285,15 @@ def add_to_cart(safe: SafePage, product_url: str,
     # Some glasses-frame URLs JS-redirect to /katalog/lenses-selector-detail/...
     # only after a noticeable delay, and alensa.cz analytics keep the network
     # busy so wait_for_load_state('networkidle') is unreliable. Poll for one
-    # of the three entry points to appear, up to 15 s.
+    # of the entry points to appear, up to 15 s.
     deadline = _time.time() + 15.0
     while _time.time() < deadline:
+        # Contact-lens product pages carry the sphere selector inline.
+        # Detect first so we don't accidentally hit the plain add link
+        # before picking a sphere.
+        if _safe_is_visible(page.locator("select[name='primary[7]']").first, 250):
+            _add_contact_lens(safe)
+            return
         if _safe_is_visible(page.locator("a.detail-addToBasket-button").first, 250):
             _add_simple(safe)
             return
@@ -299,8 +309,56 @@ def add_to_cart(safe: SafePage, product_url: str,
     raise RuntimeError(
         f"Couldn't find an add-to-cart entry on {product_url} after 15 s "
         f"(landed at {page.url!r}; no 'Vložit do košíku', 'Vybrat skla', "
-        "or 'Brýle na dálku' visible)"
+        "'Brýle na dálku', or sphere selector visible)"
     )
+
+
+def _add_contact_lens(safe: SafePage) -> None:
+    """Contact-lens product flow: pick a sphere on the product page, then
+    use the standard add-to-cart link.
+
+    The variant selectors are right on the product page (no configurator
+    subpage like glasses). primary[7] is the sphere/diopter; quantity
+    (primary[amount]) and BC/DIA (primary[8disabled], primary[9disabled])
+    usually have sensible defaults. We only set sphere.
+    """
+    page = safe.page
+
+    # Try the canonical default first; fall back to the first non-placeholder
+    # option if this product doesn't carry it.
+    sel_loc = page.locator("select[name='primary[7]']").first
+    sel_loc.wait_for(state="visible", timeout=10_000)
+    try:
+        sel_loc.select_option(label=CONTACT_LENS_DEFAULT_SPH, timeout=3000)
+    except Exception:
+        # JS: pick the first option whose text is a numeric diopter
+        # (skip placeholders like "---", "Vyberte ...", etc.).
+        page.evaluate(
+            """
+            (() => {
+              const sel = document.querySelector("select[name='primary[7]']");
+              if (!sel) return;
+              const opt = Array.from(sel.options).find(o => /^[-+]?\\d+(\\.\\d+)?$/.test(o.text.trim()));
+              if (!opt) return;
+              sel.value = opt.value;
+              sel.dispatchEvent(new Event('change', {bubbles: true}));
+            })();
+            """
+        )
+
+    # Let any AJAX driven by the sphere change settle (some products show
+    # different add-button hrefs once a variant is picked).
+    try:
+        page.wait_for_load_state("networkidle", timeout=6_000)
+    except PWTimeout:
+        pass
+    page.wait_for_timeout(500)
+
+    # Now the standard add-to-cart anchor should be active.
+    btn = page.locator("a.detail-addToBasket-button").first
+    btn.wait_for(state="visible", timeout=10_000)
+    safe.safe_click(btn, description="add-to-cart-contact-lens")
+    _wait_for_basket_committed(safe)
 
 
 def _safe_is_visible(locator, timeout_ms: int) -> bool:

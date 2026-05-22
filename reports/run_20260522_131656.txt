@@ -1,0 +1,6 @@
+Run 20260522_131656 — alensa.cz
+Summary: {'PASS': 0, 'FAIL': 3, 'NOT_APPLIED': 0, 'ERROR': 0, 'SKIPPED_EXPIRED': 0}
+
+[FAIL       ] 05flashsale26   (16.5s) — observed 10.02% vs expected 10.0% (delta 0.02pp ≤ 1.0pp); flash missing: ['Gratulujeme! Právě jste získali 10% slevu na kontaktní čočky. Pozor', 'využít můžete pouze jednu slevu.']
+[FAIL       ] 05flashsale26   (16.0s) — observed 10.02% vs expected 10.0% (delta 0.02pp ≤ 1.0pp); flash missing: ['Gratulujeme! Právě jste získali 10% slevu na kontaktní čočky. Pozor', 'využít můžete pouze jednu slevu.']
+[FAIL       ] 05flashsale26   (16.0s) — observed 10.02% vs expected 10.0% (delta 0.02pp ≤ 1.0pp); flash missing: ['Gratulujeme! Právě jste získali 10% slevu na kontaktní čočky. Pozor', 'využít můžete pouze jednu slevu.']
