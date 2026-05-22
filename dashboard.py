@@ -140,6 +140,203 @@ def results_dataframe(report: dict) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+# ---------- Human-friendly report renderer ----------
+
+def _humanize_run_timestamp(ts: str) -> str:
+    """20260522_134812 -> 22 May 2026, 13:48"""
+    try:
+        dt = datetime.strptime(ts, "%Y%m%d_%H%M%S")
+        return dt.strftime("%d %b %Y, %H:%M")
+    except (ValueError, TypeError):
+        return ts
+
+
+def _discount_overall_status(rows: list[dict]) -> str:
+    """Return 'pass' / 'mixed' / 'fail' / 'error' / 'skipped' summarising
+    all (discount, product) rows for one discount."""
+    statuses = {r["status"] for r in rows}
+    if statuses == {"PASS"}:
+        return "pass"
+    if statuses == {"SKIPPED_EXPIRED"}:
+        return "skipped"
+    if "PASS" in statuses and (statuses & {"FAIL", "NOT_APPLIED", "ERROR"}):
+        return "mixed"
+    if statuses & {"FAIL", "NOT_APPLIED"}:
+        return "fail"
+    return "error"
+
+
+def _format_value(r: dict) -> str:
+    """e.g. '20%' or '100 CZK off'"""
+    if r["expected_type"] == "percentage":
+        return f"{r['expected_value']:g}%"
+    return f"{r['expected_value']:g} CZK off"
+
+
+def _negative_plain(neg_status: str | None) -> str:
+    return {
+        "PASS_NOT_APPLIED": "✅ Restriction verified — code doesn't apply outside its scope",
+        "LEAKED":           "⚠ LEAK — code applied where it shouldn't have",
+        "ERROR":            "⚠ Couldn't verify restriction (test errored)",
+        "SKIPPED":          "",  # nothing meaningful to say
+        None:               "",
+    }.get(neg_status, str(neg_status))
+
+
+def _per_product_table(rows: list[dict]) -> pd.DataFrame:
+    """A compact, product-level table for one discount's section."""
+    out = []
+    for r in rows:
+        status = r["status"]
+        icon = STATUS_COLOR.get(status, "")
+        observed_pct = r.get("observed_discount_pct")
+        saved = r.get("observed_discount_czk")
+        baseline = r.get("baseline_czk")
+        after = r.get("observed_total_czk")
+        out.append({
+            "": icon,
+            "product": _product_slug(r.get("product_url", "")) or "—",
+            "before": f"{baseline:g} CZK" if baseline else "—",
+            "after":  f"{after:g} CZK" if after is not None else "—",
+            "saved":  f"{saved:g} CZK" if saved else "—",
+            "discount applied": f"{observed_pct:g}%" if observed_pct is not None else "—",
+        })
+    return pd.DataFrame(out)
+
+
+def render_human_report(report: dict, key_prefix: str = "h") -> None:
+    """Plain-language view of a run report. Groups by discount, shows
+    problems first, hides the raw table under an Advanced expander."""
+    results = report.get("results", [])
+    if not results:
+        st.info("No results in this report.")
+        return
+
+    # Group by discount code (preserve original order).
+    by_code: dict[str, list[dict]] = {}
+    for r in results:
+        by_code.setdefault(r["code"], []).append(r)
+
+    # Top-level banner.
+    summary = report.get("summary", {})
+    pass_count = summary.get("PASS", 0)
+    issue_count = (summary.get("FAIL", 0) + summary.get("NOT_APPLIED", 0)
+                   + summary.get("ERROR", 0))
+    skipped = summary.get("SKIPPED_EXPIRED", 0)
+    total = pass_count + issue_count + skipped
+
+    ts_human = _humanize_run_timestamp(report.get("timestamp", ""))
+    n_discounts = len(by_code)
+
+    if issue_count == 0 and pass_count > 0:
+        st.success(
+            f"### ✅ All {n_discounts} discount{'' if n_discounts == 1 else 's'} working\n"
+            f"{pass_count} product test{'' if pass_count == 1 else 's'} passed"
+            f"{f', {skipped} expired/skipped' if skipped else ''}. Run on **{ts_human}**."
+        )
+    elif issue_count > 0:
+        st.error(
+            f"### ⚠ {issue_count} test{'' if issue_count == 1 else 's'} need attention\n"
+            f"{pass_count} passed, {issue_count} failed/errored"
+            f"{f', {skipped} expired/skipped' if skipped else ''}. "
+            f"Run on **{ts_human}**."
+        )
+    else:
+        st.info(f"### {total} test(s) — see breakdown below. Run on **{ts_human}**.")
+
+    # Order discounts so problems show first, then mixed, then passes.
+    order_key = {"fail": 0, "error": 1, "mixed": 2, "pass": 3, "skipped": 4}
+    ordered_codes = sorted(
+        by_code.keys(),
+        key=lambda c: (order_key.get(_discount_overall_status(by_code[c]), 9), c),
+    )
+
+    for code in ordered_codes:
+        rows = by_code[code]
+        first = rows[0]
+        overall = _discount_overall_status(rows)
+        name = first.get("name", code)
+        value_label = _format_value(first)
+
+        pass_n = sum(1 for r in rows if r["status"] == "PASS")
+        fail_n = sum(1 for r in rows if r["status"] in ("FAIL", "NOT_APPLIED"))
+        err_n  = sum(1 for r in rows if r["status"] == "ERROR")
+
+        # Header icon + one-line summary.
+        if overall == "pass":
+            icon = "✅"
+            sub = f"Working — **{value_label}** applied on all {pass_n} product{'' if pass_n == 1 else 's'} tested."
+        elif overall == "skipped":
+            icon = "⚫"
+            sub = f"Skipped — {first.get('detail', 'expired or inactive')}."
+        elif overall == "error":
+            icon = "🚫"
+            sub = f"Test errored on all {err_n} product{'' if err_n == 1 else 's'} — site or runner couldn't complete."
+        elif overall == "mixed":
+            icon = "⚠"
+            sub = f"Partial — {pass_n} passed, {fail_n + err_n} had problems out of {len(rows)} products."
+        else:  # "fail"
+            icon = "⚠"
+            sub = f"Not working — **{value_label}** expected, but observed differently."
+
+        # Expander expanded only for problems by default.
+        with st.expander(
+            f"{icon}  **{code}**  —  {name}",
+            expanded=overall in ("fail", "error", "mixed"),
+        ):
+            st.markdown(sub)
+
+            # Per-product mini-table.
+            if any(r.get("baseline_czk") is not None for r in rows):
+                st.dataframe(
+                    _per_product_table(rows),
+                    use_container_width=True,
+                    hide_index=True,
+                )
+
+            # Negative-test info (only show interesting outcomes).
+            neg_messages = sorted({
+                _negative_plain(r.get("negative_status")) for r in rows
+                if _negative_plain(r.get("negative_status"))
+            })
+            for msg in neg_messages:
+                st.markdown(msg)
+
+            # Flash-check, if any product reports a problem.
+            flash_problems = [
+                r for r in rows
+                if r.get("flash_check") and r.get("flash_check") not in ("ok", "skipped")
+            ]
+            if flash_problems:
+                examples = {r.get("flash_check") for r in flash_problems}
+                st.markdown(
+                    "⚠ **Expected text on the cart not found** — "
+                    f"check `expected_flash_contains`: {', '.join(examples)}"
+                )
+
+            # Per-row failure detail (only if there are problems).
+            for r in rows:
+                if r["status"] in ("FAIL", "NOT_APPLIED", "ERROR"):
+                    st.markdown(
+                        f"- **{_product_slug(r.get('product_url', '')) or '?'}**: "
+                        f"{r.get('detail', '(no detail)')}"
+                    )
+                    if r.get("diagnostics", {}).get("screenshot"):
+                        shot = Path(r["diagnostics"]["screenshot"])
+                        if shot.exists():
+                            st.image(str(shot), use_container_width=True,
+                                     caption=f"Page seen when {r['code']} failed on "
+                                             f"{_product_slug(r.get('product_url', ''))}")
+
+    # Advanced details — collapsed by default.
+    with st.expander("🔬 Advanced — raw table"):
+        df = results_dataframe(report)
+        st.dataframe(df, use_container_width=True, hide_index=True)
+
+    with st.expander("📄 Raw JSON"):
+        st.json(report)
+
+
 def run_tests_streaming(placeholder, headed: bool,
                         only_codes: list[str] | None = None) -> int:
     """Run run_tests.py as a subprocess and stream its output into the UI."""
@@ -337,12 +534,8 @@ with tab_run:
             latest = list_reports()
             if latest:
                 report = load_report(latest[0])
-                st.subheader(f"Latest report: {latest[0].name}")
-                summary = report.get("summary", {})
-                st.write({k: v for k, v in summary.items() if v > 0} or summary)
-                df = results_dataframe(report)
-                st.dataframe(df, use_container_width=True, hide_index=True)
-                render_diagnostics(report.get("results", []), key_prefix="run")
+                st.subheader(f"Latest report")
+                render_human_report(report, key_prefix="run")
 
 
 # ---- Discounts tab ----
@@ -765,29 +958,18 @@ with tab_reports:
     if not reports:
         st.info("No reports yet — run the suite from the **Run tests** tab.")
     else:
-        labels = [f"{p.stem.replace('run_', '')}  ({p.name})" for p in reports]
+        labels = [
+            f"{_humanize_run_timestamp(p.stem.replace('run_', ''))}  ({p.name})"
+            for p in reports
+        ]
         idx = st.selectbox("Pick a run", range(len(reports)),
                            format_func=lambda i: labels[i])
         path = reports[idx]
         report = load_report(path)
-        meta_cols = st.columns(3)
-        meta_cols[0].metric("Timestamp", report.get("timestamp", ""))
-        meta_cols[1].metric("Site", report.get("site", ""))
-        summary = report.get("summary", {})
-        meta_cols[2].metric(
-            "Pass / Fail",
-            f"{summary.get('PASS', 0)} / {summary.get('FAIL', 0) + summary.get('NOT_APPLIED', 0) + summary.get('ERROR', 0)}"
-        )
-        st.write(summary)
-        df = results_dataframe(report)
-        st.dataframe(df, use_container_width=True, hide_index=True)
-        render_diagnostics(report.get("results", []), key_prefix=f"hist_{path.stem}")
-
-        with st.expander("Raw JSON"):
-            st.json(report)
+        render_human_report(report, key_prefix=f"hist_{path.stem}")
 
         st.download_button(
-            "Download JSON",
+            "⬇ Download this report (JSON)",
             data=json.dumps(report, indent=2, ensure_ascii=False),
             file_name=path.name,
             mime="application/json",

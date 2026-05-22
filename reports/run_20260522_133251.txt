@@ -1,0 +1,6 @@
+Run 20260522_133251 — alensa.cz
+Summary: {'PASS': 3, 'FAIL': 0, 'NOT_APPLIED': 0, 'ERROR': 0, 'SKIPPED_EXPIRED': 0}
+
+[PASS       ] 05flashsale26   (16.4s) — observed 10.02% vs expected 10.0% (delta 0.02pp ≤ 1.0pp)
+[PASS       ] 05flashsale26   (16.0s) — observed 10.02% vs expected 10.0% (delta 0.02pp ≤ 1.0pp)
+[PASS       ] 05flashsale26   (15.7s) — observed 10.02% vs expected 10.0% (delta 0.02pp ≤ 1.0pp)
