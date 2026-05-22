@@ -139,11 +139,15 @@ def results_dataframe(report: dict) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def run_tests_streaming(placeholder, headed: bool) -> int:
+def run_tests_streaming(placeholder, headed: bool,
+                        only_codes: list[str] | None = None) -> int:
     """Run run_tests.py as a subprocess and stream its output into the UI."""
     cmd = [sys.executable, "run_tests.py"]
     if headed:
         cmd.append("--headed")
+    if only_codes:
+        cmd.append("--only")
+        cmd.extend(only_codes)
     proc = subprocess.Popen(
         cmd,
         cwd=str(ROOT),
@@ -210,6 +214,53 @@ with tab_run:
         st.warning("Fix the configuration error first (see sidebar).")
     else:
         active = [d for d in cfg.discounts if d.active]
+        all_codes = [d.code for d in cfg.discounts]
+        active_codes = [d.code for d in active]
+
+        st.markdown("**Which discount(s) to run?**")
+
+        # Pre-baked picker presets so the common cases are one click.
+        if "run_selection" not in st.session_state:
+            st.session_state.run_selection = list(active_codes)
+
+        preset_cols = st.columns([1, 1, 1, 3])
+        with preset_cols[0]:
+            if st.button(f"All active ({len(active_codes)})",
+                         use_container_width=True,
+                         disabled=not active_codes):
+                st.session_state.run_selection = list(active_codes)
+                st.rerun()
+        with preset_cols[1]:
+            if st.button(f"All ({len(all_codes)})", use_container_width=True,
+                         disabled=not all_codes):
+                st.session_state.run_selection = list(all_codes)
+                st.rerun()
+        with preset_cols[2]:
+            if st.button("Clear", use_container_width=True,
+                         disabled=not all_codes):
+                st.session_state.run_selection = []
+                st.rerun()
+
+        # The actual multi-select — labels show active/inactive status.
+        def _format(code: str) -> str:
+            d = next((d for d in cfg.discounts if d.code == code), None)
+            if d is None:
+                return code
+            flag = "🟢" if d.active else "⚫"
+            return f"{flag} {d.code} — {d.name}"
+
+        selected = st.multiselect(
+            "Pick discounts",
+            options=all_codes,
+            default=st.session_state.run_selection,
+            format_func=_format,
+            label_visibility="collapsed",
+            key="run_selection_picker",
+        )
+        # Sync the picker's state back into our preset-controllable state
+        # so the preset buttons can override on the next rerun.
+        st.session_state.run_selection = selected
+
         cols = st.columns([1, 1, 2])
         with cols[0]:
             headed = st.checkbox(
@@ -218,18 +269,30 @@ with tab_run:
                 help="Run in a visible Chromium window instead of headless.",
             )
         with cols[1]:
+            n_to_run = len(selected)
             run_clicked = st.button(
-                f"▶ Run {len(active)} active discount(s)",
+                f"▶ Run {n_to_run} discount(s)" if n_to_run else "▶ Run",
                 type="primary",
-                disabled=len(active) == 0,
+                disabled=n_to_run == 0,
             )
         with cols[2]:
-            st.caption("Headless ≈ 8–12 s per discount. Live log below.")
+            st.caption(
+                "Headless ≈ 8–12 s per (discount × product). `--only` is "
+                "passed when you don't pick all active, so inactive entries "
+                "still run if explicitly selected."
+            )
 
         if run_clicked:
             log_placeholder = st.empty()
             with st.spinner("Running..."):
-                rc = run_tests_streaming(log_placeholder, headed=headed)
+                # If selection happens to equal exactly the active set,
+                # let the runner pick them via its default 'active' filter
+                # — keeps the report unambiguous. Otherwise pass --only.
+                only = None
+                if set(selected) != set(active_codes):
+                    only = selected
+                rc = run_tests_streaming(log_placeholder, headed=headed,
+                                         only_codes=only)
             if rc == 0:
                 st.success("Run finished. Latest report below.")
             else:

@@ -350,12 +350,27 @@ def main() -> None:
         help="After writing the report, git-commit + push it so the cloud "
              "dashboard sees it on next redeploy.",
     )
+    ap.add_argument(
+        "--only", nargs="+", metavar="CODE", default=None,
+        help="Only run the discounts with these codes (ignores 'active' "
+             "flag — useful for testing a single inactive discount).",
+    )
     args = ap.parse_args()
 
     cfg = load_config(args.config)
-    active = [d for d in cfg.discounts if d.active]
+    if args.only:
+        wanted = {c.lower() for c in args.only}
+        active = [d for d in cfg.discounts if d.code.lower() in wanted]
+        unknown = wanted - {d.code.lower() for d in cfg.discounts}
+        if unknown:
+            print(f"ERROR: unknown code(s) in --only: {sorted(unknown)}")
+            return
+        print(f"--only filter: running {len(active)} of {len(cfg.discounts)} "
+              f"configured discount(s), ignoring active flag")
+    else:
+        active = [d for d in cfg.discounts if d.active]
     if not active:
-        print("No active discounts in config — nothing to do.")
+        print("No discounts to run — nothing to do.")
         return
 
     # A discount must EITHER have test_product_url set, OR have applies_to
