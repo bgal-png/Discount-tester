@@ -29,12 +29,15 @@ CART_URL = "https://www.alensa.cz/nakup/kosik/"
 # Category listing pages on alensa.cz. solutions and eye_drops share one
 # page; split them by the product name prefix below.
 CATEGORY_LISTING_URLS: dict[str, Optional[str]] = {
-    "solutions":      "https://www.alensa.cz/roztoky-a-ocni-kapky.html",
-    "eye_drops":      "https://www.alensa.cz/roztoky-a-ocni-kapky.html",
-    "contact_lenses": "https://www.alensa.cz/kontaktni-cocky.html",
-    "glasses":        "https://www.alensa.cz/brylove-obroucky.html",
-    "sunglasses":     None,    # TODO: ask user for URL
-    "accessories":    None,    # TODO: ask user for URL
+    "solutions":          "https://www.alensa.cz/roztoky-a-ocni-kapky.html",
+    "eye_drops":          "https://www.alensa.cz/roztoky-a-ocni-kapky.html",
+    "contact_lenses":     "https://www.alensa.cz/kontaktni-cocky.html",
+    "glasses":            "https://www.alensa.cz/brylove-obroucky.html",
+    # Spectacle lenses aren't sold standalone; to test a lens discount we
+    # pick a glasses frame and add it WITH lenses in the configurator.
+    "lenses_for_glasses": "https://www.alensa.cz/brylove-obroucky.html",
+    "sunglasses":         None,
+    "accessories":        None,
 }
 
 # When a listing page mixes product types, filter by what the data-name
@@ -249,15 +252,19 @@ def accept_cookies(safe: SafePage, timeout_ms: int = 5000) -> bool:
 
 # ---------- product / cart ----------
 
-def add_to_cart(safe: SafePage, product_url: str) -> None:
+def add_to_cart(safe: SafePage, product_url: str,
+                cart_mode: str = "auto") -> None:
     """Navigate to a product URL and add it to the cart.
+
+    cart_mode:
+      - "auto" (default): on glasses, order frame-only (skips lens config)
+      - "with_lenses": on glasses, fully configure single-vision lenses
+        (Brýle na dálku, SPH = -1.00 both eyes, PD = 30 both eyes)
 
     Dispatches based on what the page actually exposes:
       - simple: 'Vložit do košíku' link (solutions, eye drops, accessories)
       - glasses configurator entered from frame page: 'Vybrat skla' link
-      - glasses configurator landed-on directly: alensa redirects some
-        dioptric frame URLs straight to /katalog/lenses-selector-detail/...
-        in which case 'Brýle na dálku' (lens type) is already visible
+      - glasses configurator landed-on directly via /lenses-selector-detail/
     Contact lenses (variant-required) are still not handled.
     """
     import time as _time
@@ -278,10 +285,10 @@ def add_to_cart(safe: SafePage, product_url: str) -> None:
             return
         if "/lenses-selector-detail/" in page.url or \
                 _safe_is_visible(page.locator("a:has-text('Brýle na dálku')").first, 250):
-            _add_glasses(safe, skip_select_lenses=True)
+            _add_glasses(safe, skip_select_lenses=True, cart_mode=cart_mode)
             return
         if _safe_is_visible(page.locator("a:has-text('Vybrat skla')").first, 250):
-            _add_glasses(safe, skip_select_lenses=False)
+            _add_glasses(safe, skip_select_lenses=False, cart_mode=cart_mode)
             return
         page.wait_for_timeout(500)
 
@@ -329,25 +336,21 @@ GLASSES_LENS_SPH = "-1.00"
 GLASSES_LENS_PD = "30"
 
 
-def _add_glasses(safe: SafePage, *, skip_select_lenses: bool = False) -> None:
-    """Configurator flow for dioptric glasses: enter the configurator and
-    add the frame-only default to cart.
+def _add_glasses(safe: SafePage, *, skip_select_lenses: bool = False,
+                 cart_mode: str = "auto") -> None:
+    """Configurator flow for dioptric glasses.
 
-    The configurator opens with "Objednat pouze obruby" (frames only)
-    pre-selected. Frame-only orders still qualify for the discounts we
-    care about, since these promos apply to "kompletní dioptrické brýle
-    včetně vybraných skel A brýlové obroučky" — frames count.
+    cart_mode="auto": leave the default 'Objednat pouze obruby' (frame only)
+        selected and click 'Vložit do košíku'. Cheapest / fastest path.
+    cart_mode="with_lenses": JS-click 'Brýle na dálku' to switch to single-
+        vision lenses, fill SPH (-1.00) and PD (30) for both eyes, then add.
+        Used for discounts targeting product_type='lenses_for_glasses'.
 
     Click path:
       1. 'Vybrat skla' on the frame product page (skipped if alensa
          already routed us to /katalog/lenses-selector-detail/...)
-      2. 'Vložit do košíku' on the configurator with the default
-         frames-only selection
-
-    Lens-prescription path (clicking 'Brýle na dálku' + filling SPH/PD)
-    is intentionally NOT used here — Playwright's normal click on those
-    radio cards gets intercepted, and the frame-only path is enough to
-    validate the discount math.
+      2. (with_lenses only) Pick 'Brýle na dálku' + fill SPH/PD
+      3. 'Vložit do košíku' on the configurator
     """
     page = safe.page
 
@@ -366,9 +369,15 @@ def _add_glasses(safe: SafePage, *, skip_select_lenses: bool = False) -> None:
         page.wait_for_timeout(500)
         accept_cookies(safe, timeout_ms=2000)
 
-    # Step 2: click 'Vložit do košíku' on the configurator.
-    # JS-dispatched to bypass any transient overlay/animation Playwright
-    # considers a click obstruction.
+    # Step 2 (with_lenses only): switch to single-vision lenses + fill
+    # prescription. Normal Playwright clicks on the radio cards get
+    # intercepted (~30 s timeout), so we use JS dispatch.
+    if cart_mode == "with_lenses":
+        _configure_lenses(safe)
+
+    # Step 3: click 'Vložit do košíku' on the configurator. JS-dispatched
+    # to bypass any transient overlay/animation Playwright considers a
+    # click obstruction.
     add_btn = page.locator("a.btn-add-to-basket").first
     add_btn.wait_for(state="visible", timeout=10_000)
     label = (add_btn.inner_text(timeout=1000) or "").strip()
@@ -381,6 +390,81 @@ def _add_glasses(safe: SafePage, *, skip_select_lenses: bool = False) -> None:
         "document.querySelector('a.btn-add-to-basket')?.click()"
     )
     _wait_for_basket_committed(safe)
+
+
+def _configure_lenses(safe: SafePage) -> None:
+    """JS-driven: pick 'Brýle na dálku', fill SPH=-1.00 + PD=30 both eyes."""
+    page = safe.page
+
+    # Pick "Brýle na dálku" (single-vision distance). JS-click bypasses the
+    # overlay that intercepts Playwright's normal click.
+    distance = page.locator("a.type-wrapper-with-image:has-text('Brýle na dálku')").first
+    distance.wait_for(state="visible", timeout=10_000)
+    page.evaluate(
+        "Array.from(document.querySelectorAll('a.type-wrapper-with-image'))"
+        ".find(a => a.textContent.includes('Brýle na dálku'))?.click()"
+    )
+    # Lens-type click triggers an AJAX update that renders the params form.
+    try:
+        page.wait_for_load_state("networkidle", timeout=10_000)
+    except PWTimeout:
+        pass
+    page.wait_for_timeout(1500)
+
+    # Fill SPH for both eyes (right eye = .primary-sph, left = .secondary-sph).
+    # The option labels match diopter values like "-1.00". Use JS to set
+    # values directly + dispatch a change event so site-side validators see
+    # the change. Falls back to Playwright select_option if JS path fails.
+    _set_select_by_label(page, "select.primary-sph", GLASSES_LENS_SPH)
+    _set_select_by_label(page, "select.secondary-sph", GLASSES_LENS_SPH)
+
+    # PD: values match the visible number ("30") directly.
+    _set_select_by_value(page, "select.primary-pd", GLASSES_LENS_PD)
+    _set_select_by_value(page, "select.secondary-pd", GLASSES_LENS_PD)
+
+    page.wait_for_timeout(500)
+
+
+def _set_select_by_label(page: Page, selector: str, label: str) -> None:
+    """Pick the option whose visible text matches `label`. Tries Playwright
+    first (short timeout), then JS as a fallback."""
+    loc = page.locator(selector).first
+    try:
+        loc.select_option(label=label, timeout=4000)
+        return
+    except Exception:
+        pass
+    page.evaluate(
+        f"""
+        (() => {{
+          const sel = document.querySelector({selector!r});
+          if (!sel) return;
+          const opt = Array.from(sel.options).find(o => o.text.trim() === {label!r});
+          if (!opt) return;
+          sel.value = opt.value;
+          sel.dispatchEvent(new Event('change', {{bubbles: true}}));
+        }})();
+        """
+    )
+
+
+def _set_select_by_value(page: Page, selector: str, value: str) -> None:
+    loc = page.locator(selector).first
+    try:
+        loc.select_option(value=value, timeout=4000)
+        return
+    except Exception:
+        pass
+    page.evaluate(
+        f"""
+        (() => {{
+          const sel = document.querySelector({selector!r});
+          if (!sel) return;
+          sel.value = {value!r};
+          sel.dispatchEvent(new Event('change', {{bubbles: true}}));
+        }})();
+        """
+    )
 
 
 def go_to_cart(safe: SafePage) -> None:

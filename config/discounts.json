@@ -75,6 +75,39 @@
         "delivery_method": null
       },
       "notes": "30% off complete dioptric glasses + selected frame brands. 23 allowed frame brands. Lenses also qualify EXCEPT Zeiss/Hoya/Nikon. Single-use per code, but only consumed on actual order, not on testing. Code not active until glasses-frame add-to-cart flow is built."
+    },
+    {
+      "name": "Sleva 25 % na jakákoli brýlová skla",
+      "code": "25zskla",
+      "description": "25% off any spectacle lenses. Per backend: Included Group #1 = 'Items type - Lenses for glasses' only. 'Only for complete glasses' checkbox is unchecked. Infinity uses.",
+      "active": false,
+
+      "discount_type": "percentage",
+      "value": 25,
+      "tolerance_pct": 25.0,
+
+      "test_product_url": null,
+      "non_matching_product_url": null,
+
+      "expected_flash_contains": [
+        "25zskla"
+      ],
+
+      "expires_at": null,
+      "usage_limit": null,
+      "combination_forbidden": true,
+      "min_items": null,
+
+      "applies_to": {
+        "brand": null,
+        "product_type": "lenses_for_glasses",
+        "excluded_brands": []
+      },
+      "conditions": {
+        "min_basket_czk": null,
+        "delivery_method": null
+      },
+      "notes": "Lens-only discount. Runner picks a glasses frame + adds with single-vision lenses (Brýle na dálku, SPH -1.00, PD 30). Observed % vs cart total will be much less than 25% because the discount only hits the lens portion of the bundle, not the frame. Tolerance set wide (25pp) for first run — we'll calibrate once we see what % the bundle settles on."
     }
   ]
 }

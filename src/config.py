@@ -18,6 +18,7 @@ ALLOWED_PRODUCT_TYPES = {
     "solutions",
     "eye_drops",
     "accessories",
+    "lenses_for_glasses",   # spectacle lenses, ordered with a frame
     None,
 }
 ALLOWED_DELIVERY_METHODS = {None}  # extend later, e.g. "ppl", "zasilkovna"

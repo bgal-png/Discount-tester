@@ -99,17 +99,20 @@ def new_context(p: Playwright, headed: bool) -> BrowserContext:
 
 
 def measure_baseline(p: Playwright, product_url: str, headed: bool,
-                     diag_out: Optional[dict] = None) -> float:
+                     diag_out: Optional[dict] = None,
+                     cart_mode: str = "auto") -> float:
     """Add product to a clean cart, return the subtotal.
 
-    If diag_out is provided, save diagnostics into it on failure (mutated).
+    cart_mode plumbed to alensa_cz.add_to_cart — must match the mode used
+    for the with-code measurement so baseline and with-code are comparing
+    the same basket composition.
     """
     ctx = new_context(p, headed)
     page = None
     try:
         page = ctx.new_page()
         safe = alensa_cz.open_homepage(page)
-        alensa_cz.add_to_cart(safe, product_url)
+        alensa_cz.add_to_cart(safe, product_url, cart_mode=cart_mode)
         alensa_cz.go_to_cart(safe)
         return alensa_cz.read_cart_total(safe)
     except Exception:
@@ -121,8 +124,8 @@ def measure_baseline(p: Playwright, product_url: str, headed: bool,
 
 
 def measure_with_code(p: Playwright, product_url: str, code: str,
-                      headed: bool, diag_out: Optional[dict] = None
-                      ) -> MeasureWithCode:
+                      headed: bool, diag_out: Optional[dict] = None,
+                      cart_mode: str = "auto") -> MeasureWithCode:
     """Apply the code via homepage URL param, then add product, then on the
     cart page read both the total and the persistent applied-coupon chip."""
     ctx = new_context(p, headed)
@@ -130,7 +133,7 @@ def measure_with_code(p: Playwright, product_url: str, code: str,
     try:
         page = ctx.new_page()
         safe = alensa_cz.open_homepage(page, dc_code=code)
-        alensa_cz.add_to_cart(safe, product_url)
+        alensa_cz.add_to_cart(safe, product_url, cart_mode=cart_mode)
         alensa_cz.go_to_cart(safe)
         total = alensa_cz.read_cart_total(safe)
         chip = alensa_cz.read_applied_coupon_info(safe)
@@ -188,12 +191,20 @@ def classify(d: Discount, baseline: float, observed_total: float) -> tuple[str, 
     return "FAIL", f"observed -{discount} CZK vs expected -{d.value} CZK (delta {delta_czk} CZK > {allowed})"
 
 
+def cart_mode_for(d: Discount) -> str:
+    """Pick the add-to-cart sub-flow appropriate for this discount."""
+    if d.applies_to.product_type == "lenses_for_glasses":
+        return "with_lenses"
+    return "auto"
+
+
 def run_one(p: Playwright, d: Discount, product_url: str,
             negative_url: Optional[str], baselines: dict[str, float],
-            headed: bool) -> DiscountTestResult:
-    """Run one (discount, product) test. baselines must contain product_url
-    (and negative_url if provided)."""
-    baseline = baselines[product_url]
+            headed: bool, mode: str = "auto") -> DiscountTestResult:
+    """Run one (discount, product) test. baselines is keyed by
+    '<url>#<cart_mode>' so that the same URL run in two modes carries two
+    distinct baselines."""
+    baseline = baselines[f"{product_url}#{mode}"]
     res = DiscountTestResult(
         name=d.name,
         code=d.code,
@@ -206,7 +217,8 @@ def run_one(p: Playwright, d: Discount, product_url: str,
     t0 = time.time()
     diag: dict = {}
     try:
-        m = measure_with_code(p, product_url, d.code, headed, diag_out=diag)
+        m = measure_with_code(p, product_url, d.code, headed,
+                              diag_out=diag, cart_mode=mode)
         res.observed_total_czk = m.total
         res.observed_discount_czk = round(baseline - m.total, 2)
         if baseline:
@@ -222,8 +234,10 @@ def run_one(p: Playwright, d: Discount, product_url: str,
         # Optional negative test.
         if negative_url:
             try:
-                neg = measure_with_code(p, negative_url, d.code, headed)
-                neg_baseline = baselines.get(negative_url) or measure_baseline(p, negative_url, headed)
+                neg = measure_with_code(p, negative_url, d.code, headed,
+                                        cart_mode=mode)
+                neg_baseline = baselines.get(f"{negative_url}#{mode}") or \
+                    measure_baseline(p, negative_url, headed, cart_mode=mode)
                 leak = neg_baseline - neg.total
                 leak_pct = 100 * leak / neg_baseline if neg_baseline else 0
                 if leak_pct > 0.5:
@@ -376,26 +390,35 @@ def main() -> None:
             if negative:
                 print(f"     - {negative} (negative)")
 
-        # Phase 2: baseline per unique product across all positives + negatives.
+        # Phase 2: baseline per (unique product, cart_mode). Same URL with
+        # frame-only vs with-lenses gives different totals, so each needs
+        # its own baseline. Keyed by "url#mode".
         baselines: dict[str, float] = {}
         baseline_diags: dict[str, dict] = {}
-        unique_products = sorted(
-            {u for positives, _ in per_discount.values() for u in positives}
-            | {n for _, n in per_discount.values() if n}
-        )
-        for url in unique_products:
-            print(f"[baseline] {url}")
+        baseline_keys: set[tuple[str, str]] = set()
+        for d in active:
+            mode = cart_mode_for(d)
+            positives, negative = per_discount[d.code]
+            for u in positives:
+                baseline_keys.add((u, mode))
+            if negative:
+                baseline_keys.add((negative, mode))
+        for url, mode in sorted(baseline_keys):
+            key = f"{url}#{mode}"
+            print(f"[baseline] {url} (cart_mode={mode})")
             diag: dict = {}
             try:
-                baselines[url] = measure_baseline(p, url, args.headed, diag_out=diag)
-                print(f"           {baselines[url]} CZK")
+                baselines[key] = measure_baseline(p, url, args.headed,
+                                                  diag_out=diag,
+                                                  cart_mode=mode)
+                print(f"           {baselines[key]} CZK")
             except Exception as e:
                 print(f"           ERROR measuring baseline: {e}")
                 if diag.get("screenshot"):
                     print(f"           diagnostic screenshot: {diag['screenshot']}")
                     print(f"           landed at: {diag.get('url')!r}  title: {diag.get('title')!r}")
-                baselines[url] = float("nan")
-                baseline_diags[url] = diag
+                baselines[key] = float("nan")
+                baseline_diags[key] = diag
 
         # Phase 3: per (discount, positive product) test.
         today = date.today()
@@ -425,20 +448,22 @@ def main() -> None:
                 ))
                 continue
 
+            mode = cart_mode_for(d)
             for product_url in positives:
-                print(f"[test] {d.code} on {product_url}")
-                baseline = baselines[product_url]
+                print(f"[test] {d.code} on {product_url} (cart_mode={mode})")
+                baseline_key = f"{product_url}#{mode}"
+                baseline = baselines[baseline_key]
                 if baseline != baseline:  # NaN
                     results.append(DiscountTestResult(
                         name=d.name, code=d.code, product_url=product_url,
                         expected_type=d.discount_type, expected_value=d.value,
                         tolerance_pct=d.tolerance_pct,
                         status="ERROR", detail="baseline measurement failed",
-                        diagnostics=baseline_diags.get(product_url) or None,
+                        diagnostics=baseline_diags.get(baseline_key) or None,
                     ))
                     continue
                 results.append(run_one(p, d, product_url, negative,
-                                       baselines, args.headed))
+                                       baselines, args.headed, mode=mode))
                 print(f"       -> {results[-1].status}: {results[-1].detail}")
 
     # ---- Report ----
