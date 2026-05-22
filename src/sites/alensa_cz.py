@@ -117,14 +117,25 @@ def list_products_on_category_page(safe: SafePage, category_url: str
     return cards
 
 
+def _brand_matches(product_name: str, brand: Optional[str | list[str]]) -> bool:
+    """Match a product name against a brand or a list of brands ('any of')."""
+    if brand is None:
+        return True
+    name_lc = product_name.lower()
+    if isinstance(brand, str):
+        return brand.lower() in name_lc
+    return any(b.lower() in name_lc for b in brand)
+
+
 def find_products_in_category(safe: SafePage, *,
                               product_type: Optional[str],
-                              brand: Optional[str] = None,
+                              brand: Optional[str | list[str]] = None,
                               limit: int = 3) -> list[ProductCard]:
     """Return up to `limit` product cards matching brand + product_type.
 
-    Returns [] if the category has no listing URL configured or the product
-    type requires variants (we can't add those to cart yet).
+    brand may be a single string OR a list (matches if ANY listed brand
+    appears in the product name). Returns [] if the category has no listing
+    URL configured or the product type requires variants.
     """
     if product_type in VARIANT_REQUIRED_TYPES:
         return []
@@ -134,11 +145,10 @@ def find_products_in_category(safe: SafePage, *,
     cards = list_products_on_category_page(safe, url)
     prefixes = PRODUCT_TYPE_NAME_PREFIXES.get(product_type or "")
     out: list[ProductCard] = []
-    brand_lc = brand.lower() if brand else None
     for c in cards:
         if prefixes and not any(c.name.startswith(p) for p in prefixes):
             continue
-        if brand_lc and brand_lc not in c.name.lower():
+        if not _brand_matches(c.name, brand):
             continue
         out.append(c)
         if len(out) >= limit:
@@ -148,20 +158,19 @@ def find_products_in_category(safe: SafePage, *,
 
 def find_non_matching_product(safe: SafePage, *,
                               exclude_product_type: Optional[str],
-                              exclude_brand: Optional[str] = None
+                              exclude_brand: Optional[str | list[str]] = None
                               ) -> Optional[ProductCard]:
-    """Return a single product that doesn't match the given brand+type.
+    """Return a single product that doesn't match the given brand(s)+type.
 
     Strategy:
       1. If exclude_brand is set: prefer a SAME product_type / DIFFERENT brand
          product (tests the brand restriction directly, and stays in a
          category we know how to add to cart).
-      2. Otherwise: pick a product from a different product_type entirely
-         (different category page).
+      2. Otherwise: pick a product from a different product_type entirely.
 
-    Skips contact lenses (variant-required) in either strategy.
+    Skips variant-required types (contact lenses) in either strategy.
     """
-    # Strategy 1: same product_type, different brand.
+    # Strategy 1: same product_type, different brand(s).
     if exclude_brand and exclude_product_type and \
             exclude_product_type not in VARIANT_REQUIRED_TYPES:
         url = CATEGORY_LISTING_URLS.get(exclude_product_type)
@@ -170,12 +179,11 @@ def find_non_matching_product(safe: SafePage, *,
             for c in list_products_on_category_page(safe, url):
                 if prefixes and not any(c.name.startswith(p) for p in prefixes):
                     continue
-                if exclude_brand.lower() in c.name.lower():
-                    continue
+                if _brand_matches(c.name, exclude_brand):
+                    continue  # this card IS one of the excluded brands -> skip
                 return c
 
-    # Strategy 2: different product_type. Skip listings whose URL is the
-    # same as the excluded type's listing (solutions and eye_drops share one).
+    # Strategy 2: different product_type.
     excluded_url = (CATEGORY_LISTING_URLS.get(exclude_product_type)
                     if exclude_product_type else None)
     for ptype, url in CATEGORY_LISTING_URLS.items():
@@ -185,7 +193,7 @@ def find_non_matching_product(safe: SafePage, *,
         for c in list_products_on_category_page(safe, url):
             if prefixes and not any(c.name.startswith(p) for p in prefixes):
                 continue
-            if exclude_brand and exclude_brand.lower() in c.name.lower():
+            if exclude_brand and _brand_matches(c.name, exclude_brand):
                 continue
             return c
     return None

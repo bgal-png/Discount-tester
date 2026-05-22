@@ -34,6 +34,47 @@
         "delivery_method": null
       },
       "notes": "Restricted in backend to 3 product groups (Gelone roztoky/kapky/etc) via 'Included items'. All customers, infinite uses, no expiry as of import."
+    },
+    {
+      "name": "Sleva 30 % na vybrané brýle (České dráhy)",
+      "code": "8OEO-LNKH-NYGC",
+      "description": "Stacey - České dráhy, 1000 unikátních kódů. Common code: ceskedrahybryle.",
+      "active": false,
+
+      "discount_type": "percentage",
+      "value": 30,
+      "tolerance_pct": 1.0,
+
+      "test_product_url": null,
+      "non_matching_product_url": null,
+
+      "expected_flash_contains": [
+        "30 %",
+        "brýle"
+      ],
+
+      "expires_at": null,
+      "usage_limit": 1,
+      "combination_forbidden": true,
+      "min_items": null,
+
+      "applies_to": {
+        "brand": [
+          "Polaroid", "Tommy Hilfiger", "Boss by Hugo Boss", "Marc Jacobs",
+          "Moschino", "Carolina Herrera", "Carrera", "Crullé", "LeWish",
+          "Marisio", "Kimikado", "Chiara Ferragni", "David Beckham",
+          "Dsquared2", "Fossil", "Havaianas", "Hugo by Hugo Boss",
+          "Jimmy Choo", "Kate Spade", "Levi", "Missoni", "Pierre Cardin",
+          "Under Armour"
+        ],
+        "product_type": "glasses",
+        "excluded_brands": ["Zeiss", "Hoya", "Nikon"]
+      },
+      "conditions": {
+        "min_basket_czk": null,
+        "delivery_method": null
+      },
+      "notes": "30% off complete dioptric glasses + selected frame brands. 23 allowed frame brands. Lenses also qualify EXCEPT Zeiss/Hoya/Nikon. Single-use per code, but only consumed on actual order, not on testing. Code not active until glasses-frame add-to-cart flow is built."
     }
   ]
 }

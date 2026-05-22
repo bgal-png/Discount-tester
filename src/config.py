@@ -29,8 +29,14 @@ class ConfigError(ValueError):
 
 @dataclass
 class AppliesTo:
-    brand: Optional[str] = None
+    # Single brand or list of brands. The runner treats a list as "any of
+    # these brands qualifies" (matches OR-style backend Group selection).
+    brand: Optional[str | list[str]] = None
     product_type: Optional[str] = None
+    # Brands explicitly excluded (e.g. "Spectacle lens brand - Zeiss/Hoya/Nikon"
+    # in the backend's Vyřazené kategorie). Used by the negative test picker
+    # and informational for humans reviewing the config.
+    excluded_brands: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -90,9 +96,21 @@ def _parse_discount(d: dict, idx: int) -> Discount:
         raise ConfigError(f"{where}: percentage value must be <= 100")
 
     applies_raw = d.get("applies_to") or {}
+    brand = applies_raw.get("brand")
+    if brand is not None and not isinstance(brand, (str, list)):
+        raise ConfigError(f"{where}: applies_to.brand must be string, list, or null")
+    if isinstance(brand, list) and not all(isinstance(b, str) for b in brand):
+        raise ConfigError(f"{where}: applies_to.brand list must contain only strings")
+    excluded_brands_raw = applies_raw.get("excluded_brands", []) or []
+    if not isinstance(excluded_brands_raw, list) or \
+            not all(isinstance(b, str) for b in excluded_brands_raw):
+        raise ConfigError(
+            f"{where}: applies_to.excluded_brands must be a list of strings"
+        )
     applies = AppliesTo(
-        brand=applies_raw.get("brand"),
+        brand=brand,
         product_type=applies_raw.get("product_type"),
+        excluded_brands=excluded_brands_raw,
     )
     if applies.product_type not in ALLOWED_PRODUCT_TYPES:
         raise ConfigError(
