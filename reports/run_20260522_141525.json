@@ -1,0 +1,140 @@
+{
+  "timestamp": "20260522_141525",
+  "site": "alensa.cz",
+  "currency": "CZK",
+  "summary": {
+    "PASS": 0,
+    "FAIL": 3,
+    "NOT_APPLIED": 0,
+    "ERROR": 0,
+    "SKIPPED_EXPIRED": 0
+  },
+  "results": [
+    {
+      "name": "Sleva 25 % na jakákoli brýlová skla",
+      "code": "25zskla",
+      "product_url": "https://www.alensa.cz/crulle-tr1886-c2",
+      "expected_type": "percentage",
+      "expected_value": 8.88,
+      "tolerance_pct": 1.0,
+      "baseline_czk": 1397.0,
+      "observed_total_czk": 1273.0,
+      "observed_discount_czk": 124.0,
+      "observed_discount_pct": 24.9,
+      "line_items": [
+        {
+          "url_slug": "crulle-tr1886-c2",
+          "name": "Crullé TR1886 C2",
+          "quantity": 1,
+          "original_unit_price_czk": 899.0,
+          "current_unit_price_czk": 899.0,
+          "is_discounted": false,
+          "discount_pct": 0.0,
+          "discount_czk": 0.0
+        },
+        {
+          "url_slug": "",
+          "name": "2x Brýlová čočka Adrial 1.5 (čirá)",
+          "quantity": 1,
+          "original_unit_price_czk": 498.0,
+          "current_unit_price_czk": 374.0,
+          "is_discounted": true,
+          "discount_pct": 24.9,
+          "discount_czk": 124.0
+        }
+      ],
+      "flash_text": "Slevový kód: 25zskla (-25%)",
+      "flash_check": "ok",
+      "negative_status": "PASS_NOT_APPLIED",
+      "negative_detail": "https://www.alensa.cz/roztok-gelone-360-ml: no discount (baseline 199.0 vs with-code 199.0)",
+      "status": "FAIL",
+      "detail": "line '' got 24.9% off vs expected 8.88% (delta 16.02pp > 1.0pp)",
+      "duration_s": 62.4,
+      "diagnostics": null
+    },
+    {
+      "name": "Sleva 25 % na jakákoli brýlová skla",
+      "code": "25zskla",
+      "product_url": "https://www.alensa.cz/crulle-calm-c1",
+      "expected_type": "percentage",
+      "expected_value": 8.88,
+      "tolerance_pct": 1.0,
+      "baseline_czk": 1397.0,
+      "observed_total_czk": 1273.0,
+      "observed_discount_czk": 124.0,
+      "observed_discount_pct": 24.9,
+      "line_items": [
+        {
+          "url_slug": "crulle-calm-c1",
+          "name": "Crullé Calm C1",
+          "quantity": 1,
+          "original_unit_price_czk": 899.0,
+          "current_unit_price_czk": 899.0,
+          "is_discounted": false,
+          "discount_pct": 0.0,
+          "discount_czk": 0.0
+        },
+        {
+          "url_slug": "",
+          "name": "2x Brýlová čočka Adrial 1.5 (čirá)",
+          "quantity": 1,
+          "original_unit_price_czk": 498.0,
+          "current_unit_price_czk": 374.0,
+          "is_discounted": true,
+          "discount_pct": 24.9,
+          "discount_czk": 124.0
+        }
+      ],
+      "flash_text": "Slevový kód: 25zskla (-25%)",
+      "flash_check": "ok",
+      "negative_status": "PASS_NOT_APPLIED",
+      "negative_detail": "https://www.alensa.cz/roztok-gelone-360-ml: no discount (baseline 199.0 vs with-code 199.0)",
+      "status": "FAIL",
+      "detail": "line '' got 24.9% off vs expected 8.88% (delta 16.02pp > 1.0pp)",
+      "duration_s": 62.4,
+      "diagnostics": null
+    },
+    {
+      "name": "Sleva 25 % na jakákoli brýlová skla",
+      "code": "25zskla",
+      "product_url": "https://www.alensa.cz/crulle-tr1886-c4",
+      "expected_type": "percentage",
+      "expected_value": 8.88,
+      "tolerance_pct": 1.0,
+      "baseline_czk": 1397.0,
+      "observed_total_czk": 1273.0,
+      "observed_discount_czk": 124.0,
+      "observed_discount_pct": 24.9,
+      "line_items": [
+        {
+          "url_slug": "crulle-tr1886-c4",
+          "name": "Crullé TR1886 C4",
+          "quantity": 1,
+          "original_unit_price_czk": 899.0,
+          "current_unit_price_czk": 899.0,
+          "is_discounted": false,
+          "discount_pct": 0.0,
+          "discount_czk": 0.0
+        },
+        {
+          "url_slug": "",
+          "name": "2x Brýlová čočka Adrial 1.5 (čirá)",
+          "quantity": 1,
+          "original_unit_price_czk": 498.0,
+          "current_unit_price_czk": 374.0,
+          "is_discounted": true,
+          "discount_pct": 24.9,
+          "discount_czk": 124.0
+        }
+      ],
+      "flash_text": "Slevový kód: 25zskla (-25%)",
+      "flash_check": "ok",
+      "negative_status": "PASS_NOT_APPLIED",
+      "negative_detail": "https://www.alensa.cz/roztok-gelone-360-ml: no discount (baseline 199.0 vs with-code 199.0)",
+      "status": "FAIL",
+      "detail": "line '' got 24.9% off vs expected 8.88% (delta 16.02pp > 1.0pp)",
+      "duration_s": 64.4,
+      "diagnostics": null
+    }
+  ]
+}

@@ -101,6 +101,7 @@ def save_diagnostics(page, tag: str) -> dict:
 class MeasureWithCode:
     total: float
     flash_text: Optional[str]
+    line_items: list[dict]  # serialised CartLineItems for the report
 
 
 @dataclass
@@ -115,6 +116,7 @@ class DiscountTestResult:
     observed_total_czk: Optional[float] = None
     observed_discount_czk: Optional[float] = None
     observed_discount_pct: Optional[float] = None
+    line_items: list[dict] = field(default_factory=list)  # per-line cart breakdown
     flash_text: Optional[str] = None
     flash_check: Optional[str] = None        # "ok" | "missing:<phrase>" | "no_flash" | None
     negative_status: Optional[str] = None    # PASS_NOT_APPLIED | LEAKED | SKIPPED | ERROR
@@ -159,7 +161,7 @@ def measure_with_code(p: Playwright, product_url: str, code: str,
                       headed: bool, diag_out: Optional[dict] = None,
                       cart_mode: str = "auto") -> MeasureWithCode:
     """Apply the code via homepage URL param, then add product, then on the
-    cart page read both the total and the persistent applied-coupon chip."""
+    cart page read total, applied-coupon chip, and per-line items."""
     ctx = new_context(p, headed)
     page = None
     try:
@@ -169,7 +171,24 @@ def measure_with_code(p: Playwright, product_url: str, code: str,
         alensa_cz.go_to_cart(safe)
         total = alensa_cz.read_cart_total(safe)
         chip = alensa_cz.read_applied_coupon_info(safe)
-        return MeasureWithCode(total=total, flash_text=chip)
+        lines = alensa_cz.read_cart_line_items(safe)
+        return MeasureWithCode(
+            total=total,
+            flash_text=chip,
+            line_items=[
+                {
+                    "url_slug": ln.url_slug,
+                    "name": ln.name,
+                    "quantity": ln.quantity,
+                    "original_unit_price_czk": ln.original_unit_price_czk,
+                    "current_unit_price_czk": ln.current_unit_price_czk,
+                    "is_discounted": ln.is_discounted,
+                    "discount_pct": ln.discount_pct,
+                    "discount_czk": ln.discount_czk,
+                }
+                for ln in lines
+            ],
+        )
     except Exception:
         if diag_out is not None and page is not None:
             diag_out.update(save_diagnostics(page, f"withcode_{code}_fail"))
@@ -198,29 +217,87 @@ def is_expired(d: Discount, today: date) -> bool:
         return False
 
 
-def classify(d: Discount, baseline: float, observed_total: float) -> tuple[str, str]:
-    """Return (status, detail) by comparing observed discount to expected."""
+def classify(d: Discount, baseline: float, observed_total: float,
+             line_items: Optional[list[dict]] = None
+             ) -> tuple[str, str, Optional[float]]:
+    """Return (status, detail, observed_pct_used).
+
+    Per-line check (preferred): if any cart line is discounted, the
+    discount applies. We compare the LARGEST per-line discount % to the
+    expected value — that's the line the coupon actually hit. This catches
+    "discount applied to lens portion only" cases where the basket total
+    shows a smaller % off.
+
+    Falls back to basket-total math when no line shows is_discounted=True
+    (older flow / sites that show only basket-level discounts).
+    """
     discount = round(baseline - observed_total, 2)
     if discount <= 0:
         return "NOT_APPLIED", (
             f"observed total {observed_total} CZK == baseline {baseline} CZK; "
             "site did not honor the code"
-        )
+        ), None
 
+    # Per-line path.
+    if line_items:
+        discounted_lines = [ln for ln in line_items if ln.get("is_discounted")]
+        if discounted_lines:
+            # The line with the biggest applied % is the one the coupon
+            # targeted; check that against expected.
+            target = max(discounted_lines, key=lambda ln: ln["discount_pct"])
+            observed_pct = target["discount_pct"]
+            slug = target.get("url_slug") or target.get("name") or "?"
+            if d.discount_type == "percentage":
+                delta = abs(observed_pct - d.value)
+                expected = f"{d.value:g}%"
+                seen = f"{observed_pct:g}%"
+                if delta <= d.tolerance_pct:
+                    return "PASS", (
+                        f"line '{slug}' got {seen} off (expected {expected}, "
+                        f"delta {delta:.2f}pp ≤ {d.tolerance_pct}pp)"
+                    ), observed_pct
+                return "FAIL", (
+                    f"line '{slug}' got {seen} off vs expected {expected} "
+                    f"(delta {delta:.2f}pp > {d.tolerance_pct}pp)"
+                ), observed_pct
+            # fixed_amount per line
+            line_czk_off = target.get("discount_czk", 0.0)
+            delta_czk = abs(line_czk_off - d.value)
+            allowed = max(1.0, d.value * d.tolerance_pct / 100)
+            if delta_czk <= allowed:
+                return "PASS", (
+                    f"line '{slug}' got -{line_czk_off} CZK vs expected "
+                    f"-{d.value} CZK"
+                ), None
+            return "FAIL", (
+                f"line '{slug}' got -{line_czk_off} CZK vs expected "
+                f"-{d.value} CZK (delta {delta_czk} CZK > {allowed})"
+            ), None
+
+    # Fallback: basket-total math.
     if d.discount_type == "percentage":
         observed_pct = round(100 * discount / baseline, 2) if baseline else 0
         delta = abs(observed_pct - d.value)
         if delta <= d.tolerance_pct:
-            return "PASS", f"observed {observed_pct}% vs expected {d.value}% (delta {delta:.2f}pp ≤ {d.tolerance_pct}pp)"
-        return "FAIL", f"observed {observed_pct}% vs expected {d.value}% (delta {delta:.2f}pp > {d.tolerance_pct}pp)"
-
-    # fixed_amount
+            return "PASS", (
+                f"basket-total: observed {observed_pct}% vs expected "
+                f"{d.value}% (delta {delta:.2f}pp ≤ {d.tolerance_pct}pp)"
+            ), observed_pct
+        return "FAIL", (
+            f"basket-total: observed {observed_pct}% vs expected "
+            f"{d.value}% (delta {delta:.2f}pp > {d.tolerance_pct}pp)"
+        ), observed_pct
     delta_czk = abs(discount - d.value)
-    # treat tolerance_pct as percent of expected amount for fixed discounts
     allowed = max(1.0, d.value * d.tolerance_pct / 100)
     if delta_czk <= allowed:
-        return "PASS", f"observed -{discount} CZK vs expected -{d.value} CZK (delta {delta_czk} CZK ≤ {allowed})"
-    return "FAIL", f"observed -{discount} CZK vs expected -{d.value} CZK (delta {delta_czk} CZK > {allowed})"
+        return "PASS", (
+            f"basket-total: observed -{discount} CZK vs expected "
+            f"-{d.value} CZK"
+        ), None
+    return "FAIL", (
+        f"basket-total: observed -{discount} CZK vs expected -{d.value} CZK "
+        f"(delta {delta_czk} CZK > {allowed})"
+    ), None
 
 
 def cart_mode_for(d: Discount) -> str:
@@ -256,11 +333,21 @@ def run_one(p: Playwright, d: Discount, product_url: str,
         )
         res.observed_total_czk = m.total
         res.observed_discount_czk = round(baseline - m.total, 2)
-        if baseline:
-            res.observed_discount_pct = round(100 * res.observed_discount_czk / baseline, 2)
+        res.line_items = m.line_items
         res.flash_text = m.flash_text
         res.flash_check = check_flash(d.expected_flash_contains, m.flash_text)
-        res.status, res.detail = classify(d, baseline, m.total)
+        res.status, res.detail, per_line_pct = classify(
+            d, baseline, m.total, line_items=m.line_items
+        )
+        # Prefer the per-line % when available; fall back to basket % so
+        # the report still shows something useful when no line is marked
+        # discounted.
+        if per_line_pct is not None:
+            res.observed_discount_pct = per_line_pct
+        elif baseline:
+            res.observed_discount_pct = round(
+                100 * res.observed_discount_czk / baseline, 2
+            )
 
         if res.status == "PASS" and res.flash_check not in (None, "ok", "skipped"):
             res.status = "FAIL"

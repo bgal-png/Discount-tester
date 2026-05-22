@@ -93,7 +93,7 @@
       "description": "25% off any spectacle lenses. Per backend: Included Group #1 = 'Items type - Lenses for glasses' only. 'Only for complete glasses' checkbox is unchecked. Infinity uses.",
       "active": true,
       "discount_type": "percentage",
-      "value": 8.88,
+      "value": 25,
       "tolerance_pct": 1.0,
       "test_product_url": null,
       "non_matching_product_url": null,
@@ -113,7 +113,7 @@
         "min_basket_czk": null,
         "delivery_method": null
       },
-      "notes": "Lens-only discount. Backend value = 25% off lens portion, but our runner observes % off basket total (frame 899 + BASIC lens 498 = 1397; 25% of 498 = 124.50; 124.50/1397 = 8.91%). value=8.88 is the empirical observation. If alensa changes the BASIC lens price or this discount's % rate, the observed % shifts and this will FAIL — that's correct behaviour. To re-calibrate, run the test once, read 'observed %' from the report, update value to match."
+      "notes": "Lens-only discount. Runner now reads per-line items from the cart and validates 25% off the lens line directly (not the basket total). No longer fragile to frame/lens price changes."
     },
     {
       "name": "10% on all contact lenses",

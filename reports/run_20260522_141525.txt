@@ -1,0 +1,6 @@
+Run 20260522_141525 — alensa.cz
+Summary: {'PASS': 0, 'FAIL': 3, 'NOT_APPLIED': 0, 'ERROR': 0, 'SKIPPED_EXPIRED': 0}
+
+[FAIL       ] 25zskla         (62.4s) — line '' got 24.9% off vs expected 8.88% (delta 16.02pp > 1.0pp)
+[FAIL       ] 25zskla         (62.4s) — line '' got 24.9% off vs expected 8.88% (delta 16.02pp > 1.0pp)
+[FAIL       ] 25zskla         (64.4s) — line '' got 24.9% off vs expected 8.88% (delta 16.02pp > 1.0pp)

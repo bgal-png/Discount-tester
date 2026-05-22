@@ -294,6 +294,33 @@ def render_human_report(report: dict, key_prefix: str = "h") -> None:
                     hide_index=True,
                 )
 
+            # Per-line cart breakdown (when the test added a multi-item
+            # bundle like frame + lenses). Helps confirm WHICH line the
+            # discount actually hit.
+            for r in rows:
+                lines = r.get("line_items") or []
+                if len(lines) <= 1:
+                    continue
+                product_label = (_product_slug(r.get("product_url", "")) or
+                                 r.get("name", "?"))
+                st.markdown(f"**Cart breakdown for {product_label}:**")
+                line_rows = []
+                for ln in lines:
+                    discounted = ln.get("is_discounted")
+                    line_rows.append({
+                        "": "🏷" if discounted else "—",
+                        "line item": (ln.get("name") or ln.get("url_slug") or "?")[:60],
+                        "qty": ln.get("quantity"),
+                        "original / unit": f"{ln.get('original_unit_price_czk', 0):g} CZK",
+                        "after / unit":    f"{ln.get('current_unit_price_czk', 0):g} CZK",
+                        "% off":           f"{ln.get('discount_pct', 0):g}%" if discounted else "—",
+                    })
+                st.dataframe(
+                    pd.DataFrame(line_rows),
+                    use_container_width=True,
+                    hide_index=True,
+                )
+
             # Negative-test info (only show interesting outcomes).
             neg_messages = sorted({
                 _negative_plain(r.get("negative_status")) for r in rows

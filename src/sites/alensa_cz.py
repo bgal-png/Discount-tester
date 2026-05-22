@@ -604,6 +604,126 @@ def read_cart_total(safe: SafePage, timeout_ms: int = 15_000) -> float:
     )
 
 
+@dataclass
+class CartLineItem:
+    """A single line on the cart page (one product + its current+original prices)."""
+    url_slug: str
+    name: str
+    quantity: int
+    original_unit_price_czk: float
+    current_unit_price_czk: float  # what the customer actually pays per unit
+    is_discounted: bool            # True when product-price-before showed up
+
+    @property
+    def line_total_czk(self) -> float:
+        return self.current_unit_price_czk * self.quantity
+
+    @property
+    def discount_pct(self) -> float:
+        """Per-line discount %, 0 if not discounted."""
+        if self.original_unit_price_czk <= 0 or not self.is_discounted:
+            return 0.0
+        delta = self.original_unit_price_czk - self.current_unit_price_czk
+        return round(100 * delta / self.original_unit_price_czk, 2)
+
+    @property
+    def discount_czk(self) -> float:
+        """Per-unit CZK discount, 0 if not discounted."""
+        if not self.is_discounted:
+            return 0.0
+        return round(self.original_unit_price_czk - self.current_unit_price_czk, 2)
+
+
+def read_cart_line_items(safe: SafePage) -> list[CartLineItem]:
+    """Read each `<div class="product-basket-wrapper">` on the cart page.
+
+    The HTML pattern alensa uses:
+      .product-basket-wrapper                  one per cart line
+        .product-name-area .product-name a     name + href -> url_slug
+        .product-prices-area
+          .product-price-before                ORIGINAL price, only shown when discounted
+          .product-price                       current price (after discount)
+        select[name="primary[amount]"]         quantity (selected option)
+
+    Skips wrappers that don't look like real line items (e.g. gift slots).
+    Returns [] if the cart is empty.
+    """
+    page = safe.page
+    out: list[CartLineItem] = []
+
+    # Single-product carts use data-item="global"; glasses-with-lenses
+    # bundles split into two lines, one with data-item="glasses" (frame)
+    # and one with data-item="global" (the lens pair, where the discount
+    # actually applies for 25zskla-style codes).
+    for el in page.locator(
+        "div.product-basket-wrapper[data-item='global'], "
+        "div.product-basket-wrapper[data-item='glasses']"
+    ).all():
+        try:
+            name_loc = el.locator(".product-name-area .product-name").first
+            if name_loc.count() == 0:
+                continue
+            # Anchor inside h3 is preferred (gives us a URL slug), but
+            # the lens line renders plain text inside h3.
+            link_loc = el.locator(".product-name-area .product-name a").first
+            if link_loc.count() > 0:
+                href = (link_loc.get_attribute("href") or "").strip()
+                url_slug = href.rstrip("/").rsplit("/", 1)[-1] if href else ""
+                name = (link_loc.inner_text(timeout=500) or "").strip()
+            else:
+                url_slug = ""
+                name = (name_loc.inner_text(timeout=500) or "").strip()
+
+            # Current price: the .product-price inside .product-prices-area
+            # (NOT the hidden gtm-data one).
+            current_loc = el.locator(
+                ".product-prices-area .product-price"
+            ).first
+            try:
+                current_price = parse_price_czk(
+                    current_loc.inner_text(timeout=500)
+                )
+            except Exception:
+                continue  # can't read line, skip
+
+            # Original price (only present when discounted).
+            before_loc = el.locator(
+                ".product-prices-area .product-price-before"
+            ).first
+            try:
+                original_price = parse_price_czk(
+                    before_loc.inner_text(timeout=500)
+                )
+                is_discounted = (
+                    abs(original_price - current_price) > 0.01
+                )
+            except Exception:
+                original_price = current_price
+                is_discounted = False
+
+            # Quantity from the amount selector.
+            try:
+                qty_value = el.locator(
+                    "select[name='primary[amount]']"
+                ).first.evaluate("e => e.value")
+                quantity = int(qty_value) if qty_value else 1
+            except Exception:
+                quantity = 1
+
+            out.append(CartLineItem(
+                url_slug=url_slug,
+                name=name,
+                quantity=quantity,
+                original_unit_price_czk=original_price,
+                current_unit_price_czk=current_price,
+                is_discounted=is_discounted,
+            ))
+        except Exception:
+            continue
+
+    return out
+
+
 # ---------- coupon ----------
 
 @dataclass
