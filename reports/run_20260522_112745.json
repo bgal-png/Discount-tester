@@ -1,0 +1,89 @@
+{
+  "timestamp": "20260522_112745",
+  "site": "alensa.cz",
+  "currency": "CZK",
+  "summary": {
+    "PASS": 0,
+    "FAIL": 0,
+    "NOT_APPLIED": 0,
+    "ERROR": 3,
+    "SKIPPED_EXPIRED": 0
+  },
+  "results": [
+    {
+      "name": "Sleva 25 % na jakákoli brýlová skla",
+      "code": "25zskla",
+      "product_url": "https://www.alensa.cz/crulle-tr1886-c2",
+      "expected_type": "percentage",
+      "expected_value": 25.0,
+      "tolerance_pct": 25.0,
+      "baseline_czk": null,
+      "observed_total_czk": null,
+      "observed_discount_czk": null,
+      "observed_discount_pct": null,
+      "flash_text": null,
+      "flash_check": null,
+      "negative_status": null,
+      "negative_detail": null,
+      "status": "ERROR",
+      "detail": "baseline measurement failed",
+      "duration_s": 0.0,
+      "diagnostics": {
+        "url": "https://www.alensa.cz/nakup/kosik/",
+        "title": "Nákupní košík | Alensa.cz",
+        "screenshot": "reports/diagnostics/baseline_fail_20260522_112940_251992.png",
+        "html": "reports/diagnostics/baseline_fail_20260522_112940_251992.html"
+      }
+    },
+    {
+      "name": "Sleva 25 % na jakákoli brýlová skla",
+      "code": "25zskla",
+      "product_url": "https://www.alensa.cz/crulle-calm-c1",
+      "expected_type": "percentage",
+      "expected_value": 25.0,
+      "tolerance_pct": 25.0,
+      "baseline_czk": null,
+      "observed_total_czk": null,
+      "observed_discount_czk": null,
+      "observed_discount_pct": null,
+      "flash_text": null,
+      "flash_check": null,
+      "negative_status": null,
+      "negative_detail": null,
+      "status": "ERROR",
+      "detail": "baseline measurement failed",
+      "duration_s": 0.0,
+      "diagnostics": {
+        "url": "https://www.alensa.cz/nakup/kosik/",
+        "title": "Nákupní košík | Alensa.cz",
+        "screenshot": "reports/diagnostics/baseline_fail_20260522_112848_541096.png",
+        "html": "reports/diagnostics/baseline_fail_20260522_112848_541096.html"
+      }
+    },
+    {
+      "name": "Sleva 25 % na jakákoli brýlová skla",
+      "code": "25zskla",
+      "product_url": "https://www.alensa.cz/crulle-tr1886-c4",
+      "expected_type": "percentage",
+      "expected_value": 25.0,
+      "tolerance_pct": 25.0,
+      "baseline_czk": null,
+      "observed_total_czk": null,
+      "observed_discount_czk": null,
+      "observed_discount_pct": null,
+      "flash_text": null,
+      "flash_check": null,
+      "negative_status": null,
+      "negative_detail": null,
+      "status": "ERROR",
+      "detail": "baseline measurement failed",
+      "duration_s": 0.0,
+      "diagnostics": {
+        "url": "https://www.alensa.cz/nakup/kosik/",
+        "title": "Nákupní košík | Alensa.cz",
+        "screenshot": "reports/diagnostics/baseline_fail_20260522_113031_881323.png",
+        "html": "reports/diagnostics/baseline_fail_20260522_113031_881323.html"
+      }
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+Run 20260522_112745 — alensa.cz
+Summary: {'PASS': 0, 'FAIL': 0, 'NOT_APPLIED': 0, 'ERROR': 3, 'SKIPPED_EXPIRED': 0}
+
+[ERROR      ] 25zskla         (0.0s) — baseline measurement failed
+[ERROR      ] 25zskla         (0.0s) — baseline measurement failed
+[ERROR      ] 25zskla         (0.0s) — baseline measurement failed

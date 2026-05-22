@@ -29,15 +29,19 @@ CART_URL = "https://www.alensa.cz/nakup/kosik/"
 # Category listing pages on alensa.cz. solutions and eye_drops share one
 # page; split them by the product name prefix below.
 CATEGORY_LISTING_URLS: dict[str, Optional[str]] = {
-    "solutions":          "https://www.alensa.cz/roztoky-a-ocni-kapky.html",
-    "eye_drops":          "https://www.alensa.cz/roztoky-a-ocni-kapky.html",
-    "contact_lenses":     "https://www.alensa.cz/kontaktni-cocky.html",
-    "glasses":            "https://www.alensa.cz/brylove-obroucky.html",
+    "solutions":           "https://www.alensa.cz/roztoky-a-ocni-kapky.html",
+    "eye_drops":           "https://www.alensa.cz/roztoky-a-ocni-kapky.html",
+    "contact_lenses":      "https://www.alensa.cz/kontaktni-cocky.html",
+    "glasses":             "https://www.alensa.cz/brylove-obroucky.html",
     # Spectacle lenses aren't sold standalone; to test a lens discount we
     # pick a glasses frame and add it WITH lenses in the configurator.
-    "lenses_for_glasses": "https://www.alensa.cz/brylove-obroucky.html",
-    "sunglasses":         None,
-    "accessories":        None,
+    "lenses_for_glasses":  "https://www.alensa.cz/brylove-obroucky.html",
+    "sunglasses":          "https://www.alensa.cz/slunecni-bryle.html",
+    "glasses_accessories": "https://www.alensa.cz/prislusenstvi-k-brylim.html",
+    "lens_accessories":    "https://www.alensa.cz/prislusenstvi-k-cockam.html",
+    # Legacy alias — defaults to lens accessories (the larger category
+    # for an eshop centred on contact lenses).
+    "accessories":         "https://www.alensa.cz/prislusenstvi-k-cockam.html",
 }
 
 # When a listing page mixes product types, filter by what the data-name
@@ -393,7 +397,18 @@ def _add_glasses(safe: SafePage, *, skip_select_lenses: bool = False,
 
 
 def _configure_lenses(safe: SafePage) -> None:
-    """JS-driven: pick 'Brýle na dálku', fill SPH=-1.00 + PD=30 both eyes."""
+    """JS-driven: pick 'Brýle na dálku', fill SPH=-1.00 + PD=30 both eyes.
+
+    The site has a known UX bug: after the AJAX updates from picking the
+    lens type and filling SPH/PD, the 'Vložit do košíku' button stays in
+    a non-functional state until the page is reloaded. Each AJAX call
+    encodes the configuration into the URL, so a reload preserves state.
+
+    Default selections in sections 4 (lens type = BASIC, +498 Kč), 5
+    (surface treatment = Základní úprava, +0 Kč), and 6 (special treatment
+    = Základní úpravy, +0 Kč) are accepted without interaction — per
+    user-confirmed walkthrough they're sensibly pre-selected.
+    """
     page = safe.page
 
     # Pick "Brýle na dálku" (single-vision distance). JS-click bypasses the
@@ -404,25 +419,36 @@ def _configure_lenses(safe: SafePage) -> None:
         "Array.from(document.querySelectorAll('a.type-wrapper-with-image'))"
         ".find(a => a.textContent.includes('Brýle na dálku'))?.click()"
     )
-    # Lens-type click triggers an AJAX update that renders the params form.
     try:
         page.wait_for_load_state("networkidle", timeout=10_000)
     except PWTimeout:
         pass
     page.wait_for_timeout(1500)
 
-    # Fill SPH for both eyes (right eye = .primary-sph, left = .secondary-sph).
-    # The option labels match diopter values like "-1.00". Use JS to set
-    # values directly + dispatch a change event so site-side validators see
-    # the change. Falls back to Playwright select_option if JS path fails.
     _set_select_by_label(page, "select.primary-sph", GLASSES_LENS_SPH)
     _set_select_by_label(page, "select.secondary-sph", GLASSES_LENS_SPH)
-
-    # PD: values match the visible number ("30") directly.
     _set_select_by_value(page, "select.primary-pd", GLASSES_LENS_PD)
     _set_select_by_value(page, "select.secondary-pd", GLASSES_LENS_PD)
 
-    page.wait_for_timeout(500)
+    # Let the last AJAX submit finish so the URL/state are committed
+    # server-side before we reload.
+    try:
+        page.wait_for_load_state("networkidle", timeout=8_000)
+    except PWTimeout:
+        pass
+    page.wait_for_timeout(1000)
+
+    # The hydration-bug workaround: reload so the add-to-cart button
+    # becomes functional. URL holds the config, so we land back on a
+    # fully-configured page just with a live button.
+    safe.page.reload(wait_until="domcontentloaded")
+    try:
+        page.wait_for_load_state("networkidle", timeout=10_000)
+    except PWTimeout:
+        pass
+    page.wait_for_timeout(800)
+    # Cookie banner can re-appear on the reloaded URL.
+    accept_cookies(safe, timeout_ms=2000)
 
 
 def _set_select_by_label(page: Page, selector: str, label: str) -> None:

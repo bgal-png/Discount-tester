@@ -17,8 +17,10 @@ ALLOWED_PRODUCT_TYPES = {
     "contact_lenses",
     "solutions",
     "eye_drops",
-    "accessories",
-    "lenses_for_glasses",   # spectacle lenses, ordered with a frame
+    "lenses_for_glasses",     # spectacle lenses, ordered with a frame
+    "glasses_accessories",    # cases, cloths, etc. for spectacles
+    "lens_accessories",       # cases, applicators etc. for contact lenses
+    "accessories",            # legacy/generic — treated as lens_accessories
     None,
 }
 ALLOWED_DELIVERY_METHODS = {None}  # extend later, e.g. "ppl", "zasilkovna"
