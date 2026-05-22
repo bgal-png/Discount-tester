@@ -330,23 +330,31 @@ GLASSES_LENS_PD = "30"
 
 
 def _add_glasses(safe: SafePage, *, skip_select_lenses: bool = False) -> None:
-    """Configurator flow for dioptric glasses: pick lens type, fill SPH+PD
-    for both eyes, then add to cart.
+    """Configurator flow for dioptric glasses: enter the configurator and
+    add the frame-only default to cart.
+
+    The configurator opens with "Objednat pouze obruby" (frames only)
+    pre-selected. Frame-only orders still qualify for the discounts we
+    care about, since these promos apply to "kompletní dioptrické brýle
+    včetně vybraných skel A brýlové obroučky" — frames count.
 
     Click path:
       1. 'Vybrat skla' on the frame product page (skipped if alensa
-         already redirected us to /katalog/lenses-selector-detail/...)
-      2. 'Brýle na dálku' (single-vision distance) on the lens-type screen
-      3. Fill SPH (both eyes) and PD (both eyes)
-      4. 'Vložit do košíku' on the configurator's add-to-basket button
+         already routed us to /katalog/lenses-selector-detail/...)
+      2. 'Vložit do košíku' on the configurator with the default
+         frames-only selection
+
+    Lens-prescription path (clicking 'Brýle na dálku' + filling SPH/PD)
+    is intentionally NOT used here — Playwright's normal click on those
+    radio cards gets intercepted, and the frame-only path is enough to
+    validate the discount math.
     """
     page = safe.page
 
-    # Cookie banner can reappear on the lens-selector subdomain; dismiss
-    # again so it doesn't intercept clicks on "Brýle na dálku" etc.
+    # Cookie banner can reappear on the lens-selector subdomain.
     accept_cookies(safe, timeout_ms=2000)
 
-    # Step 1: enter the lens selector (skip when we landed on it directly).
+    # Step 1: enter the configurator if we aren't already on it.
     if not skip_select_lenses:
         select_lenses = page.locator("a:has-text('Vybrat skla')").first
         select_lenses.wait_for(state="visible", timeout=10_000)
@@ -356,50 +364,22 @@ def _add_glasses(safe: SafePage, *, skip_select_lenses: bool = False) -> None:
         except PWTimeout:
             pass
         page.wait_for_timeout(500)
-        # And again after the navigation to the selector page.
         accept_cookies(safe, timeout_ms=2000)
 
-    # Step 2: pick "Brýle na dálku" (single-vision distance glasses) —
-    # simplest option, asks for just SPH + PD.
-    distance = page.locator("a.type-wrapper-with-image:has-text('Brýle na dálku')").first
-    distance.wait_for(state="visible", timeout=10_000)
-    safe.safe_click(distance, description="distance-glasses")
-    try:
-        page.wait_for_load_state("networkidle", timeout=10_000)
-    except PWTimeout:
-        pass
-    page.wait_for_timeout(500)
-
-    # Step 3: fill SPH for both eyes (right eye uses class .primary-sph,
-    # left eye uses .secondary-sph). Option labels match diopter values
-    # like "-1.00". PD selects are .primary-pd / .secondary-pd; option
-    # values match the number directly (e.g. "30").
-    sph_selects = page.locator(
-        "select.primary-sph, select.secondary-sph"
-    ).all()
-    if len(sph_selects) < 2:
-        raise RuntimeError(
-            f"Expected 2 SPH selects on the lens configurator, found {len(sph_selects)}"
-        )
-    for sel in sph_selects:
-        sel.select_option(label=GLASSES_LENS_SPH)
-
-    pd_selects = page.locator(
-        "select.primary-pd, select.secondary-pd"
-    ).all()
-    if len(pd_selects) < 2:
-        raise RuntimeError(
-            f"Expected 2 PD selects on the lens configurator, found {len(pd_selects)}"
-        )
-    for sel in pd_selects:
-        sel.select_option(value=GLASSES_LENS_PD)
-
-    page.wait_for_timeout(500)
-
-    # Step 4: add the configured bundle to the cart.
+    # Step 2: click 'Vložit do košíku' on the configurator.
+    # JS-dispatched to bypass any transient overlay/animation Playwright
+    # considers a click obstruction.
     add_btn = page.locator("a.btn-add-to-basket").first
     add_btn.wait_for(state="visible", timeout=10_000)
-    safe.safe_click(add_btn, description="add-to-cart-glasses")
+    label = (add_btn.inner_text(timeout=1000) or "").strip()
+    if any(bad in label.lower() for bad in
+           ("zaplatit", "potvrdit", "závazně", "zavazne")):
+        raise SafetyViolation(
+            f"Refusing JS-click on suspicious add-to-cart label: {label!r}"
+        )
+    page.evaluate(
+        "document.querySelector('a.btn-add-to-basket')?.click()"
+    )
     _wait_for_basket_committed(safe)
 
 

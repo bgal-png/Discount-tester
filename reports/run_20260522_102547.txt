@@ -1,0 +1,9 @@
+Run 20260522_102547 — alensa.cz
+Summary: {'PASS': 6, 'FAIL': 0, 'NOT_APPLIED': 0, 'ERROR': 0, 'SKIPPED_EXPIRED': 0}
+
+[PASS       ] gel26care       (15.0s) — observed 20.1% vs expected 20.0% (delta 0.10pp ≤ 1.0pp)
+[PASS       ] gel26care       (44.7s) — observed 20.2% vs expected 20.0% (delta 0.20pp ≤ 1.0pp)
+[PASS       ] gel26care       (14.8s) — observed 20.05% vs expected 20.0% (delta 0.05pp ≤ 1.0pp)
+[PASS       ] 8OEO-LNKH-NYGC  (35.0s) — observed 30.03% vs expected 30.0% (delta 0.03pp ≤ 1.0pp)
+[PASS       ] 8OEO-LNKH-NYGC  (35.6s) — observed 30.03% vs expected 30.0% (delta 0.03pp ≤ 1.0pp)
+[PASS       ] 8OEO-LNKH-NYGC  (35.3s) — observed 30.03% vs expected 30.0% (delta 0.03pp ≤ 1.0pp)

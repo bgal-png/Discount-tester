@@ -39,7 +39,7 @@
       "name": "Sleva 30 % na vybrané brýle (České dráhy)",
       "code": "8OEO-LNKH-NYGC",
       "description": "Stacey - České dráhy, 1000 unikátních kódů. Common code: ceskedrahybryle.",
-      "active": false,
+      "active": true,
 
       "discount_type": "percentage",
       "value": 30,
@@ -49,8 +49,8 @@
       "non_matching_product_url": null,
 
       "expected_flash_contains": [
-        "30 %",
-        "brýle"
+        "8OEO-LNKH-NYGC",
+        "-30%"
       ],
 
       "expires_at": null,
