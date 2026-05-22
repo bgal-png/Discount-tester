@@ -11,8 +11,9 @@ import json
 import subprocess
 import sys
 from dataclasses import asdict
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
+from typing import Optional
 
 import pandas as pd
 import streamlit as st
@@ -201,9 +202,43 @@ with st.sidebar:
 
 
 # --- Tabs ---
-tab_run, tab_discounts, tab_edit, tab_reports = st.tabs(
-    ["▶ Run tests", "📋 Discounts", "📝 Edit config", "📂 Past reports"]
+tab_run, tab_discounts, tab_add, tab_edit, tab_reports = st.tabs(
+    ["▶ Run tests", "📋 Discounts", "➕ Add discount",
+     "📝 Edit / Delete", "📂 Past reports"]
 )
+
+
+def _load_raw_config() -> dict:
+    """Return the parsed JSON contents of discounts.json (no schema validation)."""
+    return json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
+
+
+def _write_raw_config(doc: dict) -> None:
+    """Pretty-print and write discounts.json."""
+    CONFIG_PATH.write_text(
+        json.dumps(doc, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+
+
+def _validate_discount_dict(d: dict) -> Optional[str]:
+    """Return None if the dict parses cleanly, else a human-readable error."""
+    from src.config import _parse_discount  # type: ignore
+    try:
+        _parse_discount(d, 0)
+        return None
+    except (ConfigError, ValueError, KeyError, TypeError) as e:
+        return str(e)
+
+
+def _csv_to_list(raw: str) -> list[str]:
+    """Comma-separated text -> list of trimmed non-empty strings."""
+    return [s.strip() for s in (raw or "").split(",") if s.strip()]
+
+
+# product_type options shown to the human, derived from the loader's allowed set
+from src.config import ALLOWED_PRODUCT_TYPES as _ALLOWED_PT  # noqa: E402
+PRODUCT_TYPE_OPTIONS = ["(none)"] + sorted(t for t in _ALLOWED_PT if t)
 
 
 # ---- Run tab ----
@@ -338,104 +373,389 @@ with tab_discounts:
         st.info("Config not loaded.")
 
 
-# ---- Edit config tab ----
-with tab_edit:
-    st.subheader("Edit `config/discounts.json`")
+# ---- Add discount tab ----
+with tab_add:
+    st.subheader("Add a new discount")
     st.caption(
-        "Edit below, hit **💾 Save to disk**, then go to the **▶ Run tests** "
-        "tab. Saves overwrite the file directly — use **↺ Reload** to "
-        "discard local edits and pull what's on disk."
+        "Fill the fields below from the backend's discount edit page and "
+        "hit Save. New entries are appended to `discounts.json` with "
+        "`active: false` so they don't run until you verify them."
     )
 
-    raw_current = CONFIG_PATH.read_text(encoding="utf-8")
-    if "config_text" not in st.session_state:
-        st.session_state.config_text = raw_current
+    with st.form("new_discount_form", clear_on_submit=False):
+        # --- Identity ---
+        st.markdown("**Identity**")
+        c1, c2 = st.columns(2)
+        with c1:
+            f_code = st.text_input(
+                "Code *",
+                help="The coupon code shoppers type at checkout (e.g. SUMMER10).",
+            )
+            f_name = st.text_input(
+                "Display name *",
+                help="What shows in reports. Often the backend's Jméno/Name field.",
+            )
+        with c2:
+            f_type = st.selectbox("Discount type *", ["percentage", "fixed_amount"])
+            f_value = st.number_input(
+                "Value (% or CZK) *", min_value=0.0, step=1.0, value=0.0,
+                help="Backend's Percent or FIX price.",
+            )
+            f_tol = st.number_input(
+                "Tolerance (percentage points)",
+                min_value=0.0, value=1.0, step=0.5,
+                help="Pass/fail band around the expected value. ±1pp suits most.",
+            )
 
-    # We need the live validation result to decide whether Save is enabled,
-    # so do the parse once up front before drawing the buttons.
-    edited_for_check = st.session_state.config_text
-    err_msg = None
-    parsed = None
-    discount_count = None
-    try:
-        parsed = json.loads(edited_for_check)
-        from src.config import _parse_discount  # type: ignore
-        if "discounts" not in parsed or not isinstance(parsed["discounts"], list):
-            raise ValueError("Root must contain a 'discounts' list")
-        for i, d in enumerate(parsed["discounts"]):
-            _parse_discount(d, i)
-        discount_count = len(parsed["discounts"])
-    except json.JSONDecodeError as e:
-        err_msg = f"JSON syntax error: {e}"
-    except (ConfigError, ValueError, KeyError, TypeError) as e:
-        err_msg = f"Schema error: {e}"
-
-    diff_changed = edited_for_check.strip() != raw_current.strip()
-
-    btn_cols = st.columns([1.3, 1, 1, 1.5, 2])
-    with btn_cols[0]:
-        save_clicked = st.button(
-            "💾 Save to disk",
-            type="primary",
-            disabled=err_msg is not None or not diff_changed,
-            help=("Write the edits below to config/discounts.json. "
-                  "Disabled until the JSON is valid AND differs from disk."),
+        f_description = st.text_area(
+            "Description (internal note)", height=70,
+            help="Backend's 'Popis' field — your team's note, not shown to customers.",
         )
-    with btn_cols[1]:
-        if st.button("➕ Insert blank"):
-            try:
-                doc = json.loads(st.session_state.config_text)
-                doc.setdefault("discounts", []).append(BLANK_DISCOUNT_TEMPLATE)
-                st.session_state.config_text = json.dumps(
-                    doc, indent=2, ensure_ascii=False
-                )
-                st.rerun()
-            except json.JSONDecodeError as e:
-                st.error(f"Can't insert — current JSON is invalid: {e}")
-    with btn_cols[2]:
-        if st.button("↺ Reload"):
-            st.session_state.config_text = raw_current
-            st.rerun()
-    with btn_cols[3]:
-        st.download_button(
-            "⬇ Download",
-            data=st.session_state.config_text,
-            file_name="discounts.json",
-            mime="application/json",
-            help="Save a copy somewhere safe before risky edits.",
+        f_active = st.checkbox(
+            "Active",
+            value=False,
+            help="Off by default. Verify with a single-discount run, then flip on.",
         )
-    with btn_cols[4]:
-        pass  # filler
 
-    if save_clicked:
+        st.markdown("---")
+        # --- Applies to ---
+        st.markdown("**Applies to** — what the discount targets")
+        c1, c2 = st.columns(2)
+        with c1:
+            f_brand = st.text_input(
+                "Brand(s)",
+                help=("Single brand (e.g. 'Gelone'), or comma-separated for "
+                      "multi-brand (e.g. 'Crullé, Polaroid, Tommy Hilfiger'). "
+                      "Leave empty for 'any brand'."),
+            )
+            f_excluded = st.text_input(
+                "Excluded brands (comma-separated)",
+                help=("Brands explicitly excluded — backend's "
+                      "'Vyřazené kategorie'."),
+            )
+        with c2:
+            f_ptype = st.selectbox(
+                "Product type",
+                options=PRODUCT_TYPE_OPTIONS,
+                help=("Maps to the category page the runner will pick test "
+                      "products from. '(none)' = any."),
+            )
+
+        st.markdown("---")
+        # --- Conditions ---
+        st.markdown("**Conditions** (informational unless we explicitly support them)")
+        c1, c2 = st.columns(2)
+        with c1:
+            f_min_basket = st.number_input(
+                "Min basket CZK (0 = none)",
+                min_value=0, value=0,
+                help="Backend's 'From price'.",
+            )
+            f_usage_limit = st.number_input(
+                "Usage limit (0 = unlimited)",
+                min_value=0, value=0,
+            )
+        with c2:
+            f_min_items = st.number_input(
+                "Min items (0 = none)",
+                min_value=0, value=0,
+                help="Backend's 'Min items amount'.",
+            )
+            f_combo_forbidden = st.checkbox(
+                "Combination forbidden",
+                value=False,
+                help="Backend's 'Zákaz kombinování slev'.",
+            )
+
+        f_expires = st.date_input(
+            "Expires at (leave empty for no expiry)", value=None,
+        )
+
+        st.markdown("---")
+        # --- Validation ---
+        st.markdown("**Validation**")
+        f_flash = st.text_input(
+            "Expected flash phrases (comma-separated)",
+            help=("Substrings to look for in the cart's applied-coupon chip "
+                  "after the code applies. e.g. 'CODE123, -10%'."),
+        )
+
+        st.markdown("---")
+        # --- Manual overrides ---
+        st.markdown("**Manual overrides** — leave empty to let the runner auto-discover")
+        c1, c2 = st.columns(2)
+        with c1:
+            f_test_url = st.text_input(
+                "Test product URL",
+                help="Force-test against this exact product instead of auto-discovery.",
+            )
+        with c2:
+            f_neg_url = st.text_input(
+                "Non-matching product URL",
+                help="Force-pick this product for the negative test.",
+            )
+
+        f_notes = st.text_area("Notes (free text)", height=80)
+
+        st.markdown("")
+        submitted = st.form_submit_button("💾 Save new discount", type="primary")
+
+    if submitted:
+        errors: list[str] = []
+        if not f_code.strip():
+            errors.append("Code is required.")
+        if not f_name.strip():
+            errors.append("Display name is required.")
+        if f_value <= 0:
+            errors.append("Value must be > 0.")
+
+        # Check uniqueness against existing
         try:
-            CONFIG_PATH.write_text(st.session_state.config_text, encoding="utf-8")
-            st.success(f"✅ Saved {discount_count} discount(s) to {CONFIG_PATH.name}")
-            st.rerun()  # re-read the sidebar's loaded-config view
-        except OSError as e:
-            st.error(f"Failed to write: {e}")
+            existing_doc = _load_raw_config()
+            existing_codes = {
+                str(d.get("code", "")).lower()
+                for d in existing_doc.get("discounts", [])
+            }
+            if f_code.strip().lower() in existing_codes:
+                errors.append(
+                    f"Code '{f_code.strip()}' already exists — use **📝 Edit "
+                    "/ Delete** to modify it."
+                )
+        except Exception as e:
+            errors.append(f"Couldn't read existing config: {e}")
+            existing_doc = None
 
-    st.text_area(
-        "JSON",
-        height=500,
-        key="config_text",
-        label_visibility="collapsed",
+        if errors:
+            for e in errors:
+                st.error(e)
+        else:
+            brand_value: object
+            brand_list = _csv_to_list(f_brand)
+            if len(brand_list) > 1:
+                brand_value = brand_list
+            elif len(brand_list) == 1:
+                brand_value = brand_list[0]
+            else:
+                brand_value = None
+
+            new_discount = {
+                "name": f_name.strip(),
+                "code": f_code.strip(),
+                "description": f_description.strip(),
+                "active": bool(f_active),
+                "discount_type": f_type,
+                "value": float(f_value),
+                "tolerance_pct": float(f_tol),
+                "test_product_url": f_test_url.strip() or None,
+                "non_matching_product_url": f_neg_url.strip() or None,
+                "expected_flash_contains": _csv_to_list(f_flash),
+                "expires_at": (f_expires.isoformat()
+                               if isinstance(f_expires, date) else None),
+                "usage_limit": int(f_usage_limit) if f_usage_limit > 0 else None,
+                "combination_forbidden": bool(f_combo_forbidden),
+                "min_items": int(f_min_items) if f_min_items > 0 else None,
+                "applies_to": {
+                    "brand": brand_value,
+                    "product_type": (None if f_ptype == "(none)" else f_ptype),
+                    "excluded_brands": _csv_to_list(f_excluded),
+                },
+                "conditions": {
+                    "min_basket_czk": (float(f_min_basket)
+                                       if f_min_basket > 0 else None),
+                    "delivery_method": None,
+                },
+                "notes": f_notes.strip(),
+            }
+
+            schema_err = _validate_discount_dict(new_discount)
+            if schema_err:
+                st.error(f"Schema validation failed: {schema_err}")
+            else:
+                try:
+                    existing_doc.setdefault("discounts", []).append(new_discount)
+                    _write_raw_config(existing_doc)
+                    st.success(
+                        f"✅ Saved '{new_discount['code']}' to "
+                        f"{CONFIG_PATH.name}. Switch to **▶ Run tests** to "
+                        "verify with `--only` before activating."
+                    )
+                    st.balloons()
+                except Exception as e:
+                    st.error(f"Failed to write file: {e}")
+
+
+# ---- Edit / Delete tab ----
+with tab_edit:
+    st.subheader("Edit or delete a discount")
+    st.caption(
+        "Pick a discount to edit its JSON in isolation. Save writes back "
+        "into `discounts.json` in place. Delete removes only that entry — "
+        "the rest of the file is untouched."
     )
 
-    if err_msg:
-        st.error(err_msg)
-    elif parsed is not None:
-        active_count = sum(1 for d in parsed["discounts"] if d.get("active", True))
-        if diff_changed:
-            st.info(
-                f"✅ Valid. {discount_count} discount(s), {active_count} active. "
-                "**Edits NOT yet saved to disk** — click 💾 Save to disk."
+    try:
+        doc = _load_raw_config()
+    except Exception as e:
+        st.error(f"Couldn't load {CONFIG_PATH}: {e}")
+        doc = None
+
+    if not doc or not doc.get("discounts"):
+        st.info("No discounts to edit yet. Add one in the **➕ Add discount** tab.")
+    else:
+        codes = [str(d.get("code", "")) for d in doc["discounts"]]
+        labels = [
+            f"{'🟢' if d.get('active') else '⚫'} {d.get('code', '?')} — {d.get('name', '?')}"
+            for d in doc["discounts"]
+        ]
+
+        # Key changes when the doc changes so the picker resets sensibly.
+        picker_idx = st.selectbox(
+            "Pick a discount",
+            range(len(codes)),
+            format_func=lambda i: labels[i],
+            key=f"edit_picker_{len(codes)}",
+        )
+        current_entry = doc["discounts"][picker_idx]
+        current_code = codes[picker_idx]
+        current_text = json.dumps(current_entry, indent=2, ensure_ascii=False)
+
+        # Per-entry session state — re-initialise when picker changes.
+        edit_key = f"edit_text_{current_code}"
+        if edit_key not in st.session_state:
+            st.session_state[edit_key] = current_text
+
+        # Live-validate
+        edit_err = None
+        edit_parsed = None
+        try:
+            edit_parsed = json.loads(st.session_state[edit_key])
+            err = _validate_discount_dict(edit_parsed)
+            if err:
+                edit_err = f"Schema error: {err}"
+        except json.JSONDecodeError as e:
+            edit_err = f"JSON syntax error: {e}"
+
+        edit_changed = (
+            st.session_state[edit_key].strip() != current_text.strip()
+        )
+
+        c1, c2, c3, _ = st.columns([1.2, 1.2, 1, 3])
+        with c1:
+            save_clicked = st.button(
+                "💾 Save changes",
+                type="primary",
+                disabled=(edit_err is not None or not edit_changed),
+                key="edit_save_btn",
             )
+        with c2:
+            if st.button("↺ Reset to file", key="edit_reset_btn"):
+                st.session_state[edit_key] = current_text
+                st.rerun()
+        with c3:
+            confirm_delete = st.checkbox(
+                "Confirm",
+                key=f"confirm_del_{current_code}",
+                help="Required to enable the Delete button.",
+            )
+        delete_clicked = st.button(
+            f"🗑 Delete '{current_code}'",
+            disabled=not confirm_delete,
+            key="edit_delete_btn",
+        )
+
+        if save_clicked and edit_parsed is not None:
+            try:
+                # If the code changed, prevent collision with another entry
+                new_code = str(edit_parsed.get("code", ""))
+                other_codes = {c.lower() for i, c in enumerate(codes)
+                               if i != picker_idx}
+                if new_code.lower() in other_codes:
+                    st.error(
+                        f"Can't save: code '{new_code}' is already used by "
+                        "another discount."
+                    )
+                else:
+                    doc["discounts"][picker_idx] = edit_parsed
+                    _write_raw_config(doc)
+                    # Drop the per-entry state so the next render picks up
+                    # the freshly-saved version.
+                    st.session_state.pop(edit_key, None)
+                    st.success(f"✅ Saved changes to '{new_code}'.")
+                    st.rerun()
+            except Exception as e:
+                st.error(f"Failed to write file: {e}")
+
+        if delete_clicked:
+            try:
+                del doc["discounts"][picker_idx]
+                _write_raw_config(doc)
+                st.session_state.pop(edit_key, None)
+                st.session_state.pop(f"confirm_del_{current_code}", None)
+                st.success(f"🗑 Deleted '{current_code}'.")
+                st.rerun()
+            except Exception as e:
+                st.error(f"Failed to delete: {e}")
+
+        st.text_area(
+            "JSON for this discount",
+            height=400,
+            key=edit_key,
+            label_visibility="collapsed",
+        )
+
+        if edit_err:
+            st.error(edit_err)
+        elif edit_changed:
+            st.info("✅ Valid. **Edits NOT yet saved** — click 💾 Save changes.")
         else:
-            st.success(
-                f"✅ Valid. {discount_count} discount(s), {active_count} active. "
-                "Matches the file on disk."
+            st.success("✅ Valid. Matches the file on disk.")
+
+        # Escape-hatch: full-file editor as before, hidden by default.
+        with st.expander("Advanced — edit the full discounts.json"):
+            st.caption(
+                "For bulk edits or recovering from a broken state. Saves "
+                "overwrite the whole file."
             )
+            _RAW_FULL = "raw_full_text"
+            disk_text = CONFIG_PATH.read_text(encoding="utf-8")
+            if _RAW_FULL not in st.session_state:
+                st.session_state[_RAW_FULL] = disk_text
+
+            raw_err = None
+            try:
+                raw_parsed = json.loads(st.session_state[_RAW_FULL])
+                from src.config import _parse_discount  # type: ignore
+                for i, x in enumerate(raw_parsed.get("discounts", [])):
+                    _parse_discount(x, i)
+            except json.JSONDecodeError as e:
+                raw_err = f"JSON syntax error: {e}"
+            except (ConfigError, ValueError, KeyError, TypeError) as e:
+                raw_err = f"Schema error: {e}"
+
+            raw_changed = st.session_state[_RAW_FULL].strip() != disk_text.strip()
+
+            raw_save = st.button(
+                "💾 Save full file",
+                type="primary",
+                disabled=raw_err is not None or not raw_changed,
+                key="raw_save_btn",
+            )
+            if raw_save:
+                CONFIG_PATH.write_text(
+                    st.session_state[_RAW_FULL], encoding="utf-8"
+                )
+                st.session_state.pop(_RAW_FULL, None)
+                st.success("✅ Saved full file.")
+                st.rerun()
+
+            st.text_area(
+                "Full JSON",
+                height=400,
+                key=_RAW_FULL,
+                label_visibility="collapsed",
+            )
+            if raw_err:
+                st.error(raw_err)
 
 
 # ---- Reports tab ----
