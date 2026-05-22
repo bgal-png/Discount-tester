@@ -342,52 +342,23 @@ with tab_discounts:
 with tab_edit:
     st.subheader("Edit `config/discounts.json`")
     st.caption(
-        "Streamlit Cloud's filesystem is ephemeral, so saves here don't "
-        "persist across restarts. Workflow: **edit below → validate → "
-        "copy → paste into GitHub** (one click below). GitHub commit triggers "
-        "an auto-redeploy."
+        "Edit below, hit **💾 Save to disk**, then go to the **▶ Run tests** "
+        "tab. Saves overwrite the file directly — use **↺ Reload** to "
+        "discard local edits and pull what's on disk."
     )
 
     raw_current = CONFIG_PATH.read_text(encoding="utf-8")
     if "config_text" not in st.session_state:
         st.session_state.config_text = raw_current
 
-    btn_cols = st.columns([1, 1, 2])
-    with btn_cols[0]:
-        if st.button("➕ Insert blank discount"):
-            try:
-                doc = json.loads(st.session_state.config_text)
-                doc.setdefault("discounts", []).append(BLANK_DISCOUNT_TEMPLATE)
-                st.session_state.config_text = json.dumps(doc, indent=2, ensure_ascii=False)
-                st.rerun()
-            except json.JSONDecodeError as e:
-                st.error(f"Can't insert — current JSON is invalid: {e}")
-    with btn_cols[1]:
-        if st.button("↺ Reload from file"):
-            st.session_state.config_text = raw_current
-            st.rerun()
-    with btn_cols[2]:
-        st.link_button("✏ Open GitHub editor →", GITHUB_EDIT_URL,
-                       help="Paste your validated JSON there, commit, "
-                            "Streamlit redeploys automatically.",
-                       type="primary")
-
-    edited = st.text_area(
-        "JSON",
-        height=500,
-        key="config_text",
-        label_visibility="collapsed",
-    )
-
-    # Live validation.
+    # We need the live validation result to decide whether Save is enabled,
+    # so do the parse once up front before drawing the buttons.
+    edited_for_check = st.session_state.config_text
     err_msg = None
+    parsed = None
     discount_count = None
     try:
-        parsed = json.loads(edited)
-        # Schema-level validation via the same loader the runner uses.
-        # Write to a temp string-loader: easiest is reusing load_config by
-        # writing to a temp file in /tmp. But we can also call the internal
-        # parser directly to avoid disk I/O.
+        parsed = json.loads(edited_for_check)
         from src.config import _parse_discount  # type: ignore
         if "discounts" not in parsed or not isinstance(parsed["discounts"], list):
             raise ValueError("Root must contain a 'discounts' list")
@@ -399,21 +370,72 @@ with tab_edit:
     except (ConfigError, ValueError, KeyError, TypeError) as e:
         err_msg = f"Schema error: {e}"
 
-    if err_msg:
-        st.error(err_msg)
-    else:
-        active_count = sum(1 for d in parsed["discounts"] if d.get("active", True))
-        st.success(f"✅ Valid. {discount_count} discount(s), {active_count} active.")
-        diff_changed = edited.strip() != raw_current.strip()
-        if diff_changed:
-            st.info("Your edits differ from the file currently loaded on disk. "
-                    "Commit them on GitHub to make them live.")
+    diff_changed = edited_for_check.strip() != raw_current.strip()
+
+    btn_cols = st.columns([1.3, 1, 1, 1.5, 2])
+    with btn_cols[0]:
+        save_clicked = st.button(
+            "💾 Save to disk",
+            type="primary",
+            disabled=err_msg is not None or not diff_changed,
+            help=("Write the edits below to config/discounts.json. "
+                  "Disabled until the JSON is valid AND differs from disk."),
+        )
+    with btn_cols[1]:
+        if st.button("➕ Insert blank"):
+            try:
+                doc = json.loads(st.session_state.config_text)
+                doc.setdefault("discounts", []).append(BLANK_DISCOUNT_TEMPLATE)
+                st.session_state.config_text = json.dumps(
+                    doc, indent=2, ensure_ascii=False
+                )
+                st.rerun()
+            except json.JSONDecodeError as e:
+                st.error(f"Can't insert — current JSON is invalid: {e}")
+    with btn_cols[2]:
+        if st.button("↺ Reload"):
+            st.session_state.config_text = raw_current
+            st.rerun()
+    with btn_cols[3]:
         st.download_button(
-            "⬇ Download discounts.json",
-            data=edited,
+            "⬇ Download",
+            data=st.session_state.config_text,
             file_name="discounts.json",
             mime="application/json",
+            help="Save a copy somewhere safe before risky edits.",
         )
+    with btn_cols[4]:
+        pass  # filler
+
+    if save_clicked:
+        try:
+            CONFIG_PATH.write_text(st.session_state.config_text, encoding="utf-8")
+            st.success(f"✅ Saved {discount_count} discount(s) to {CONFIG_PATH.name}")
+            st.rerun()  # re-read the sidebar's loaded-config view
+        except OSError as e:
+            st.error(f"Failed to write: {e}")
+
+    st.text_area(
+        "JSON",
+        height=500,
+        key="config_text",
+        label_visibility="collapsed",
+    )
+
+    if err_msg:
+        st.error(err_msg)
+    elif parsed is not None:
+        active_count = sum(1 for d in parsed["discounts"] if d.get("active", True))
+        if diff_changed:
+            st.info(
+                f"✅ Valid. {discount_count} discount(s), {active_count} active. "
+                "**Edits NOT yet saved to disk** — click 💾 Save to disk."
+            )
+        else:
+            st.success(
+                f"✅ Valid. {discount_count} discount(s), {active_count} active. "
+                "Matches the file on disk."
+            )
 
 
 # ---- Reports tab ----
