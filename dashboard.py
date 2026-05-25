@@ -365,11 +365,14 @@ def render_human_report(report: dict, key_prefix: str = "h") -> None:
 
 
 def run_tests_streaming(placeholder, headed: bool,
-                        only_codes: list[str] | None = None) -> int:
+                        only_codes: list[str] | None = None,
+                        sweep: bool = False) -> int:
     """Run run_tests.py as a subprocess and stream its output into the UI."""
     cmd = [sys.executable, "run_tests.py"]
     if headed:
         cmd.append("--headed")
+    if sweep:
+        cmd.append("--sweep")
     if only_codes:
         cmd.append("--only")
         cmd.extend(only_codes)
@@ -520,7 +523,7 @@ with tab_run:
         # so the preset buttons can override on the next rerun.
         st.session_state.run_selection = selected
 
-        cols = st.columns([1, 1, 2])
+        cols = st.columns([1, 1.4, 1, 2])
         with cols[0]:
             headed = st.checkbox(
                 "Show browser",
@@ -528,17 +531,27 @@ with tab_run:
                 help="Run in a visible Chromium window instead of headless.",
             )
         with cols[1]:
+            sweep = st.checkbox(
+                "Sweep mode (price extremes)",
+                value=False,
+                help=("Test the 5 cheapest products + 5 default-sort products "
+                      "per discount instead of just 3. Catches outliers like "
+                      "discounts wrongly applying to €1 promo items. "
+                      "~3× slower."),
+            )
+        with cols[2]:
             n_to_run = len(selected)
             run_clicked = st.button(
                 f"▶ Run {n_to_run} discount(s)" if n_to_run else "▶ Run",
                 type="primary",
                 disabled=n_to_run == 0,
             )
-        with cols[2]:
+        with cols[3]:
+            mode_note = "Sweep" if sweep else "Sample"
             st.caption(
-                "Headless ≈ 8–12 s per (discount × product). `--only` is "
-                "passed when you don't pick all active, so inactive entries "
-                "still run if explicitly selected."
+                f"**{mode_note}** mode. "
+                f"{'~5–10 min' if sweep else '~30 s – 1 min'} per discount. "
+                "`--only` passes when you don't pick all active."
             )
 
         if run_clicked:
@@ -551,7 +564,7 @@ with tab_run:
                 if set(selected) != set(active_codes):
                     only = selected
                 rc = run_tests_streaming(log_placeholder, headed=headed,
-                                         only_codes=only)
+                                         only_codes=only, sweep=sweep)
             if rc == 0:
                 st.success("Run finished. Latest report below.")
             else:

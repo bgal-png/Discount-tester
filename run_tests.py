@@ -398,13 +398,16 @@ def run_one(p: Playwright, d: Discount, product_url: str,
 
 
 def discover_products(p: Playwright, active: list[Discount], headed: bool,
-                      limit_per_discount: int = 3
+                      limit_per_discount: int = 3,
+                      sweep: bool = False
                       ) -> dict[str, tuple[list[str], Optional[str]]]:
     """For each active discount, resolve (positive_urls, negative_url).
 
-    Honors manual overrides (test_product_url / non_matching_product_url).
-    Otherwise scrapes the matching category listing on alensa.cz.
+    sweep=False (default): sample mode — N products from the default listing.
+    sweep=True: focused sweep — N cheapest + N from default listing,
+    designed to catch price-edge outlier bugs.
 
+    Honors manual overrides (test_product_url / non_matching_product_url).
     Returns a dict keyed by discount.code.
     """
     out: dict[str, tuple[list[str], Optional[str]]] = {}
@@ -427,6 +430,18 @@ def discover_products(p: Playwright, active: list[Discount], headed: bool,
             # Positive products.
             if d.test_product_url:
                 positives = [d.test_product_url]
+            elif sweep:
+                key = (brand_k, d.applies_to.product_type, "sweep")
+                if key not in positive_cache:
+                    cards = alensa_cz.find_products_for_sweep(
+                        safe,
+                        brand=d.applies_to.brand,
+                        product_type=d.applies_to.product_type,
+                        n_cheapest=5,
+                        n_default=5,
+                    )
+                    positive_cache[key] = [c.url for c in cards]
+                positives = positive_cache[key]
             else:
                 key = (brand_k, d.applies_to.product_type, limit_per_discount)
                 if key not in positive_cache:
@@ -482,6 +497,13 @@ def main() -> None:
         help="Only run the discounts with these codes (ignores 'active' "
              "flag — useful for testing a single inactive discount).",
     )
+    ap.add_argument(
+        "--sweep", action="store_true",
+        help="Focused sweep mode: test the 5 cheapest + 5 default-sort "
+             "products per discount, instead of just 3. Catches price-edge "
+             "outlier bugs (e.g. discount that wrongly applies to €1 promo "
+             "items). Slower — ~10 min per discount instead of ~1 min.",
+    )
     args = ap.parse_args()
 
     cfg = load_config(args.config)
@@ -520,8 +542,10 @@ def main() -> None:
 
     with sync_playwright() as p:
         # Phase 1: discover products (positive + negative) for each discount.
-        print(f"[discover] resolving product URLs for {len(active)} discount(s)...")
-        per_discount = discover_products(p, active, args.headed)
+        mode_label = "sweep" if args.sweep else "sample"
+        print(f"[discover] resolving product URLs for {len(active)} discount(s) "
+              f"in {mode_label} mode...")
+        per_discount = discover_products(p, active, args.headed, sweep=args.sweep)
         for d in active:
             positives, negative = per_discount[d.code]
             origin = "manual" if d.test_product_url else "auto"

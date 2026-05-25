@@ -55,6 +55,14 @@ PRODUCT_TYPE_NAME_PREFIXES: dict[str, tuple[str, ...]] = {
 # Empty for now — contact_lenses are handled via _add_contact_lens.
 VARIANT_REQUIRED_TYPES: set[str] = set()
 
+# URL suffix that re-orders a listing page from cheapest to most expensive.
+# Discovered empirically: clicking the "Nejnižší cena" option in the
+# .catalogue-sorting-select dropdown redirects to this query param.
+# The mirror URL `?seradit=nejvyssi-cena` returns empty (probably an AJAX
+# endpoint when accessed directly); for now we approximate "expensive"
+# by paginating the cheapest sort or just skipping that bucket.
+LISTING_SORT_CHEAPEST = "?seradit=nejnizsi-cena"
+
 # Default contact-lens sphere/diopter to pick when the page doesn't pre-select
 # one. Most lens products carry "-1.00" as a valid option. The runner falls
 # back to "the first non-placeholder option" if -1.00 isn't listed.
@@ -165,6 +173,65 @@ def find_products_in_category(safe: SafePage, *,
         if len(out) >= limit:
             break
     return out
+
+
+def find_products_for_sweep(safe: SafePage, *,
+                            product_type: Optional[str],
+                            brand: Optional[str | list[str]] = None,
+                            n_cheapest: int = 5,
+                            n_default: int = 10) -> list[ProductCard]:
+    """Stratified sample for focused-sweep mode.
+
+    Pulls:
+      - up to `n_cheapest` products from the price-ascending listing
+        (where €1-style outliers hide)
+      - up to `n_default` from the default popularity sort (mid-range
+        representative)
+
+    De-dups by URL. Filters by brand + product-type the same way as
+    find_products_in_category. Returns [] for variant-required types we
+    can't add to cart yet (contact_lenses now handled via _add_contact_lens,
+    so that constraint is empty for the moment).
+    """
+    if product_type in VARIANT_REQUIRED_TYPES:
+        return []
+    base_url = CATEGORY_LISTING_URLS.get(product_type) if product_type else None
+    if not base_url:
+        return []
+
+    prefixes = PRODUCT_TYPE_NAME_PREFIXES.get(product_type or "")
+
+    def _matches(card: ProductCard) -> bool:
+        if prefixes and not any(card.name.startswith(p) for p in prefixes):
+            return False
+        return _brand_matches(card.name, brand)
+
+    seen_urls: set[str] = set()
+    picks: list[ProductCard] = []
+
+    # Bucket 1: cheapest first.
+    cheapest = list_products_on_category_page(safe, base_url + LISTING_SORT_CHEAPEST)
+    for c in cheapest:
+        if not _matches(c) or c.url in seen_urls:
+            continue
+        picks.append(c)
+        seen_urls.add(c.url)
+        if sum(1 for p in picks if p.url in seen_urls) >= n_cheapest:
+            break
+
+    # Bucket 2: default sort.
+    default = list_products_on_category_page(safe, base_url)
+    default_added = 0
+    for c in default:
+        if not _matches(c) or c.url in seen_urls:
+            continue
+        picks.append(c)
+        seen_urls.add(c.url)
+        default_added += 1
+        if default_added >= n_default:
+            break
+
+    return picks
 
 
 def find_non_matching_product(safe: SafePage, *,
