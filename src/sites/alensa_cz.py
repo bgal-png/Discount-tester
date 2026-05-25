@@ -55,6 +55,29 @@ PRODUCT_TYPE_NAME_PREFIXES: dict[str, tuple[str, ...]] = {
 # Empty for now — contact_lenses are handled via _add_contact_lens.
 VARIANT_REQUIRED_TYPES: set[str] = set()
 
+# Maps product_type to the base path used in brand-filtered URLs.
+# Format: /<base-path>/<brand-slug> returns a brand-filtered listing.
+# Verified: /brylove-obroucky/crulle works, /kontaktni-cocky/<brand> works.
+BRAND_FILTER_PATHS: dict[str, str] = {
+    "glasses":             "/brylove-obroucky",
+    "sunglasses":          "/slunecni-bryle",
+    "contact_lenses":      "/kontaktni-cocky",
+    "lenses_for_glasses":  "/brylove-obroucky",  # same listing as frames
+    "solutions":           None,   # no brand-filtered listing — name prefix suffices
+    "eye_drops":           None,
+    "glasses_accessories": None,
+    "lens_accessories":    None,
+    "accessories":         None,
+}
+
+
+def _slugify_brand(brand: str) -> str:
+    """Czech-friendly brand-name -> URL slug. 'Hugo by Hugo Boss' -> 'hugo-by-hugo-boss'."""
+    import unicodedata
+    s = unicodedata.normalize("NFKD", brand).encode("ascii", "ignore").decode("ascii")
+    return s.lower().strip().replace(" ", "-")
+
+
 # URL suffix that re-orders a listing page from cheapest to most expensive.
 # Discovered empirically: clicking the "Nejnižší cena" option in the
 # .catalogue-sorting-select dropdown redirects to this query param.
@@ -110,11 +133,24 @@ class ProductCard:
     price_czk: Optional[float]
 
 
+def _parse_data_price(raw: Optional[str]) -> Optional[float]:
+    """data-price comes in three shapes: '899' (cheap), '1 999' with a
+    non-breaking thousand-separator (expensive), '1 999,50' with comma
+    decimal. Normalise all of them."""
+    if not raw:
+        return None
+    cleaned = raw.replace("\xa0", "").replace(" ", "").replace(",", ".")
+    try:
+        return float(cleaned)
+    except ValueError:
+        return None
+
+
 def list_products_on_category_page(safe: SafePage, category_url: str
                                    ) -> list[ProductCard]:
     """Visit a listing page and return its product cards."""
     safe.goto(category_url, wait_until="domcontentloaded")
-    safe.page.wait_for_timeout(1500)
+    safe.page.wait_for_timeout(2500)
     cards: list[ProductCard] = []
     for el in safe.page.locator("a.product").all():
         try:
@@ -123,8 +159,7 @@ def list_products_on_category_page(safe: SafePage, category_url: str
                 continue
             pid = el.get_attribute("data-id") or ""
             name = el.get_attribute("data-name") or ""
-            price_raw = el.get_attribute("data-price")
-            price = float(price_raw) if price_raw else None
+            price = _parse_data_price(el.get_attribute("data-price"))
             cards.append(ProductCard(
                 url=href.strip(),
                 product_id=pid,
@@ -179,19 +214,20 @@ def find_products_for_sweep(safe: SafePage, *,
                             product_type: Optional[str],
                             brand: Optional[str | list[str]] = None,
                             n_cheapest: int = 5,
-                            n_default: int = 10) -> list[ProductCard]:
+                            n_default: int = 10,
+                            n_per_brand: int = 1) -> list[ProductCard]:
     """Stratified sample for focused-sweep mode.
 
     Pulls:
       - up to `n_cheapest` products from the price-ascending listing
         (where €1-style outliers hide)
-      - up to `n_default` from the default popularity sort (mid-range
-        representative)
+      - up to `n_default` from the default popularity sort
+      - up to `n_per_brand` from EACH brand-filtered listing when `brand`
+        is a list of brands (multi-brand restricted discount). Catches
+        per-brand backend-tagging bugs: 'Polaroid frames are mis-tagged so
+        the discount doesn't apply on any of them'.
 
-    De-dups by URL. Filters by brand + product-type the same way as
-    find_products_in_category. Returns [] for variant-required types we
-    can't add to cart yet (contact_lenses now handled via _add_contact_lens,
-    so that constraint is empty for the moment).
+    De-dups by URL. Skips brand listings with no URL pattern configured.
     """
     if product_type in VARIANT_REQUIRED_TYPES:
         return []
@@ -209,27 +245,54 @@ def find_products_for_sweep(safe: SafePage, *,
     seen_urls: set[str] = set()
     picks: list[ProductCard] = []
 
+    def _add_from(cards: list[ProductCard], limit: int) -> int:
+        added = 0
+        for c in cards:
+            if not _matches(c) or c.url in seen_urls:
+                continue
+            picks.append(c)
+            seen_urls.add(c.url)
+            added += 1
+            if added >= limit:
+                break
+        return added
+
     # Bucket 1: cheapest first.
-    cheapest = list_products_on_category_page(safe, base_url + LISTING_SORT_CHEAPEST)
-    for c in cheapest:
-        if not _matches(c) or c.url in seen_urls:
-            continue
-        picks.append(c)
-        seen_urls.add(c.url)
-        if sum(1 for p in picks if p.url in seen_urls) >= n_cheapest:
-            break
+    _add_from(
+        list_products_on_category_page(safe, base_url + LISTING_SORT_CHEAPEST),
+        n_cheapest,
+    )
 
     # Bucket 2: default sort.
-    default = list_products_on_category_page(safe, base_url)
-    default_added = 0
-    for c in default:
-        if not _matches(c) or c.url in seen_urls:
-            continue
-        picks.append(c)
-        seen_urls.add(c.url)
-        default_added += 1
-        if default_added >= n_default:
-            break
+    _add_from(list_products_on_category_page(safe, base_url), n_default)
+
+    # Bucket 3: per-brand listing. Only when brand is a list — single-brand
+    # discounts already get full coverage from buckets 1 & 2 since they
+    # filter to that brand. We use the host's full URL plus the brand path
+    # so /brylove-obroucky.html and /brylove-obroucky/polaroid both work.
+    brand_path = BRAND_FILTER_PATHS.get(product_type or "")
+    if brand_path and isinstance(brand, list) and len(brand) > 1:
+        for one_brand in brand:
+            slug = _slugify_brand(one_brand)
+            url = f"https://www.alensa.cz{brand_path}/{slug}"
+            try:
+                cards = list_products_on_category_page(safe, url)
+            except Exception:
+                continue
+            # Inside a brand-filtered listing every card is already the
+            # right brand, so we skip the _matches brand-check by bypassing
+            # the closure. We still de-dup against seen_urls.
+            added = 0
+            for c in cards:
+                if c.url in seen_urls:
+                    continue
+                if prefixes and not any(c.name.startswith(p) for p in prefixes):
+                    continue
+                picks.append(c)
+                seen_urls.add(c.url)
+                added += 1
+                if added >= n_per_brand:
+                    break
 
     return picks
 
