@@ -72,10 +72,19 @@ BRAND_FILTER_PATHS: dict[str, str] = {
 
 
 def _slugify_brand(brand: str) -> str:
-    """Czech-friendly brand-name -> URL slug. 'Hugo by Hugo Boss' -> 'hugo-by-hugo-boss'."""
+    """Brand-name -> URL slug used in /<cat>/<slug> brand-filter listings.
+    - Strips accents: 'Crullé' -> 'crulle'
+    - Spaces to hyphens: 'Hugo by Hugo Boss' -> 'hugo-by-hugo-boss'
+    - Apostrophes also become hyphens: "Levi's" -> 'levi-s'
+    - Collapses runs of dashes.
+    """
+    import re
     import unicodedata
     s = unicodedata.normalize("NFKD", brand).encode("ascii", "ignore").decode("ascii")
-    return s.lower().strip().replace(" ", "-")
+    s = s.lower().strip()
+    s = re.sub(r"[\s'_]+", "-", s)   # whitespace, apostrophe, underscore -> hyphen
+    s = re.sub(r"-+", "-", s)        # collapse multiple hyphens
+    return s.strip("-")
 
 
 # URL suffix that re-orders a listing page from cheapest to most expensive.
@@ -148,9 +157,18 @@ def _parse_data_price(raw: Optional[str]) -> Optional[float]:
 
 def list_products_on_category_page(safe: SafePage, category_url: str
                                    ) -> list[ProductCard]:
-    """Visit a listing page and return its product cards."""
+    """Visit a listing page and return its product cards.
+
+    Waits until the first product card actually appears (up to 8 s) rather
+    than a fixed delay — some brand-filtered listings render slowly. If
+    nothing appears in 8 s, treats the listing as empty (out of stock).
+    """
     safe.goto(category_url, wait_until="domcontentloaded")
-    safe.page.wait_for_timeout(2500)
+    try:
+        safe.page.wait_for_selector("a.product", state="visible", timeout=8_000)
+    except PWTimeout:
+        return []  # truly empty listing — out of stock or wrong URL
+    safe.page.wait_for_timeout(500)  # small buffer for the remaining cards
     cards: list[ProductCard] = []
     for el in safe.page.locator("a.product").all():
         try:
