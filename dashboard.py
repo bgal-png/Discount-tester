@@ -173,6 +173,126 @@ def _format_value(r: dict) -> str:
     return f"{r['expected_value']:g} CZK off"
 
 
+def _summarise_codes(report: dict) -> dict[str, dict]:
+    """code -> dict with pass_n / fail_n / error_n / skip_n / total / status."""
+    by_code: dict[str, dict] = {}
+    for r in report.get("results", []):
+        s = by_code.setdefault(r["code"], {
+            "pass_n": 0, "fail_n": 0, "error_n": 0, "skip_n": 0, "total": 0,
+        })
+        s["total"] += 1
+        st = r["status"]
+        if st == "PASS":
+            s["pass_n"] += 1
+        elif st in ("FAIL", "NOT_APPLIED"):
+            s["fail_n"] += 1
+        elif st == "ERROR":
+            s["error_n"] += 1
+        elif st == "SKIPPED_EXPIRED":
+            s["skip_n"] += 1
+    for s in by_code.values():
+        if s["fail_n"] == 0 and s["error_n"] == 0 and s["pass_n"] > 0:
+            s["status"] = "pass"
+        elif s["pass_n"] > 0 and (s["fail_n"] > 0 or s["error_n"] > 0):
+            s["status"] = "mixed"
+        elif s["fail_n"] > 0 or s["error_n"] > 0:
+            s["status"] = "fail"
+        elif s["skip_n"] == s["total"] and s["total"] > 0:
+            s["status"] = "skipped"
+        else:
+            s["status"] = "unknown"
+    return by_code
+
+
+def _find_previous_report(current_path: Path) -> Optional[Path]:
+    """Return the report immediately before current_path in time-sorted order."""
+    reports = list_reports()  # already sorted newest first
+    found = False
+    for p in reports:
+        if found:
+            return p
+        if p == current_path:
+            found = True
+    return None
+
+
+def render_changes_since_last(current_report: dict, current_path: Path) -> None:
+    """Banner at the top of the report view summarising what changed since
+    the previous run. Silent on no-change runs; loud on regressions."""
+    prev_path = _find_previous_report(current_path)
+    if not prev_path:
+        st.caption("ℹ First run on this system — no previous report to compare against.")
+        return
+
+    try:
+        prev_report = load_report(prev_path)
+    except Exception:
+        return
+
+    curr_codes = _summarise_codes(current_report)
+    prev_codes = _summarise_codes(prev_report)
+
+    regressed = []     # was 'pass', now anything else
+    recovered = []     # was non-pass, now 'pass'
+    new_codes = []     # in current, not in previous
+    removed = []       # in previous, not in current
+    still_failing = [] # was non-pass, still non-pass
+
+    for code, c in curr_codes.items():
+        if code not in prev_codes:
+            new_codes.append((code, c))
+            continue
+        p = prev_codes[code]
+        if p["status"] == "pass" and c["status"] != "pass":
+            regressed.append((code, p, c))
+        elif p["status"] != "pass" and c["status"] == "pass":
+            recovered.append((code, p, c))
+        elif p["status"] != "pass" and c["status"] != "pass":
+            still_failing.append((code, p, c))
+
+    for code in prev_codes:
+        if code not in curr_codes:
+            removed.append(code)
+
+    prev_ts = _humanize_run_timestamp(prev_report.get("timestamp", ""))
+
+    if not (regressed or recovered or new_codes or removed or still_failing):
+        st.caption(f"✅ Same as last run ({prev_ts}) — no changes.")
+        return
+
+    st.markdown(f"#### Changes since last run on {prev_ts}")
+
+    if regressed:
+        lines = []
+        for code, p, c in regressed:
+            lines.append(
+                f"- 🔴 **`{code}`** regressed: was **{p['pass_n']}/{p['total']}** "
+                f"passing → now **{c['pass_n']}/{c['total']}**"
+            )
+        st.error("**Regressions:**\n\n" + "\n".join(lines))
+
+    if recovered:
+        lines = []
+        for code, p, c in recovered:
+            lines.append(
+                f"- 🟢 **`{code}`** recovered: was **{p['pass_n']}/{p['total']}** "
+                f"passing → now **{c['pass_n']}/{c['total']}**"
+            )
+        st.success("**Recovered:**\n\n" + "\n".join(lines))
+
+    if still_failing:
+        lines = [f"`{code}`" for code, *_ in still_failing]
+        st.warning(f"**Still failing from before:** {', '.join(lines)}")
+
+    if new_codes:
+        labels = [f"`{code}` ({c['pass_n']}/{c['total']})" for code, c in new_codes]
+        st.info(f"**New discounts tested for the first time:** {', '.join(labels)}")
+
+    if removed:
+        labels = [f"`{c}`" for c in removed]
+        st.info(f"**Discounts in last run but not this one:** {', '.join(labels)}")
+
+
 def _negative_plain(neg_status: str | None) -> str:
     return {
         "PASS_NOT_APPLIED": "✅ Restriction verified — code doesn't apply outside its scope",
@@ -204,13 +324,20 @@ def _per_product_table(rows: list[dict]) -> pd.DataFrame:
     return pd.DataFrame(out)
 
 
-def render_human_report(report: dict, key_prefix: str = "h") -> None:
+def render_human_report(report: dict, key_prefix: str = "h",
+                        report_path: Optional[Path] = None) -> None:
     """Plain-language view of a run report. Groups by discount, shows
-    problems first, hides the raw table under an Advanced expander."""
+    problems first, hides the raw table under an Advanced expander.
+
+    If report_path is given, prepends a 'changes since last run' banner.
+    """
     results = report.get("results", [])
     if not results:
         st.info("No results in this report.")
         return
+
+    if report_path is not None:
+        render_changes_since_last(report, report_path)
 
     # Group by discount code (preserve original order).
     by_code: dict[str, list[dict]] = {}
@@ -575,7 +702,8 @@ with tab_run:
             if latest:
                 report = load_report(latest[0])
                 st.subheader(f"Latest report")
-                render_human_report(report, key_prefix="run")
+                render_human_report(report, key_prefix="run",
+                                    report_path=latest[0])
 
 
 # ---- Discounts tab ----
@@ -1006,7 +1134,8 @@ with tab_reports:
                            format_func=lambda i: labels[i])
         path = reports[idx]
         report = load_report(path)
-        render_human_report(report, key_prefix=f"hist_{path.stem}")
+        render_human_report(report, key_prefix=f"hist_{path.stem}",
+                            report_path=path)
 
         st.download_button(
             "⬇ Download this report (JSON)",
