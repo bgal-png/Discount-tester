@@ -1,0 +1,110 @@
+{
+  "timestamp": "20260525_141221",
+  "site": "alensa.cz",
+  "currency": "CZK",
+  "summary": {
+    "PASS": 3,
+    "FAIL": 0,
+    "NOT_APPLIED": 0,
+    "ERROR": 0,
+    "SKIPPED_EXPIRED": 0
+  },
+  "results": [
+    {
+      "name": "Gelone contact solutions and drops - 20 %",
+      "code": "gel26care",
+      "product_url": "https://www.alensa.cz/roztok-gelone-360-ml",
+      "expected_type": "percentage",
+      "expected_value": 20.0,
+      "tolerance_pct": 1.0,
+      "baseline_czk": 199.0,
+      "observed_total_czk": 159.0,
+      "observed_discount_czk": 40.0,
+      "observed_discount_pct": 20.1,
+      "line_items": [
+        {
+          "url_slug": "roztok-gelone-360-ml",
+          "name": "Roztok Gelone 360 ml",
+          "quantity": 1,
+          "original_unit_price_czk": 199.0,
+          "current_unit_price_czk": 159.0,
+          "is_discounted": true,
+          "discount_pct": 20.1,
+          "discount_czk": 40.0
+        }
+      ],
+      "flash_text": "Slevový kód: gel26care (-20%)",
+      "flash_check": "ok",
+      "negative_status": "PASS_NOT_APPLIED",
+      "negative_detail": "https://www.alensa.cz/roztok-renu-multiplus-360-ml: no discount (baseline 199.0 vs with-code 199.0)",
+      "status": "PASS",
+      "detail": "line 'roztok-gelone-360-ml' got 20.1% off (expected 20%, delta 0.10pp ≤ 1.0pp)",
+      "duration_s": 18.1,
+      "diagnostics": null
+    },
+    {
+      "name": "Gelone contact solutions and drops - 20 %",
+      "code": "gel26care",
+      "product_url": "https://www.alensa.cz/roztok-gelone-100-ml",
+      "expected_type": "percentage",
+      "expected_value": 20.0,
+      "tolerance_pct": 1.0,
+      "baseline_czk": 99.0,
+      "observed_total_czk": 79.0,
+      "observed_discount_czk": 20.0,
+      "observed_discount_pct": 20.2,
+      "line_items": [
+        {
+          "url_slug": "roztok-gelone-100-ml",
+          "name": "Roztok Gelone 100 ml",
+          "quantity": 1,
+          "original_unit_price_czk": 99.0,
+          "current_unit_price_czk": 79.0,
+          "is_discounted": true,
+          "discount_pct": 20.2,
+          "discount_czk": 20.0
+        }
+      ],
+      "flash_text": "Slevový kód: gel26care (-20%)",
+      "flash_check": "ok",
+      "negative_status": "PASS_NOT_APPLIED",
+      "negative_detail": "https://www.alensa.cz/roztok-renu-multiplus-360-ml: no discount (baseline 199.0 vs with-code 199.0)",
+      "status": "PASS",
+      "detail": "line 'roztok-gelone-100-ml' got 20.2% off (expected 20%, delta 0.20pp ≤ 1.0pp)",
+      "duration_s": 17.0,
+      "diagnostics": null
+    },
+    {
+      "name": "Gelone contact solutions and drops - 20 %",
+      "code": "gel26care",
+      "product_url": "https://www.alensa.cz/roztok-gelone-2-x-360-ml",
+      "expected_type": "percentage",
+      "expected_value": 20.0,
+      "tolerance_pct": 1.0,
+      "baseline_czk": 379.0,
+      "observed_total_czk": 303.0,
+      "observed_discount_czk": 76.0,
+      "observed_discount_pct": 20.05,
+      "line_items": [
+        {
+          "url_slug": "roztok-gelone-2-x-360-ml",
+          "name": "Roztok Gelone 2x 360 ml",
+          "quantity": 1,
+          "original_unit_price_czk": 379.0,
+          "current_unit_price_czk": 303.0,
+          "is_discounted": true,
+          "discount_pct": 20.05,
+          "discount_czk": 76.0
+        }
+      ],
+      "flash_text": "Slevový kód: gel26care (-20%)",
+      "flash_check": "ok",
+      "negative_status": "PASS_NOT_APPLIED",
+      "negative_detail": "https://www.alensa.cz/roztok-renu-multiplus-360-ml: no discount (baseline 199.0 vs with-code 199.0)",
+      "status": "PASS",
+      "detail": "line 'roztok-gelone-2-x-360-ml' got 20.05% off (expected 20%, delta 0.05pp ≤ 1.0pp)",
+      "duration_s": 16.7,
+      "diagnostics": null
+    }
+  ]
+}

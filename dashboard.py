@@ -475,8 +475,9 @@ def render_human_report(report: dict, key_prefix: str = "h",
                         f"- **{_product_slug(r.get('product_url', '')) or '?'}**: "
                         f"{r.get('detail', '(no detail)')}"
                     )
-                    if r.get("diagnostics", {}).get("screenshot"):
-                        shot = Path(r["diagnostics"]["screenshot"])
+                    diag = r.get("diagnostics") or {}
+                    if diag.get("screenshot"):
+                        shot = Path(diag["screenshot"])
                         if shot.exists():
                             st.image(str(shot), use_container_width=True,
                                      caption=f"Page seen when {r['code']} failed on "

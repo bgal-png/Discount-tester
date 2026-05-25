@@ -163,7 +163,11 @@
       "combination_forbidden": false,
       "min_items": null,
       "applies_to": {
-        "brand": "Polaroid",
+        "brand": [
+          "Polaroid",
+          "Hugo by Hugo Boss",
+          "Missoni"
+        ],
         "product_type": "sunglasses",
         "excluded_brands": []
       },
