@@ -1,0 +1,6 @@
+Run 20260525_140009 — alensa.cz
+Summary: {'PASS': 3, 'FAIL': 0, 'NOT_APPLIED': 0, 'ERROR': 0, 'SKIPPED_EXPIRED': 0}
+
+[PASS       ] 25zskla         (65.8s) — line '2x Brýlová čočka Adrial 1.5 (čirá)' got 24.9% off (expected 25%, delta 0.10pp ≤ 1.0pp)
+[PASS       ] 25zskla         (63.0s) — line '2x Brýlová čočka Adrial 1.5 (čirá)' got 24.9% off (expected 25%, delta 0.10pp ≤ 1.0pp)
+[PASS       ] 25zskla         (62.9s) — line '2x Brýlová čočka Adrial 1.5 (čirá)' got 24.9% off (expected 25%, delta 0.10pp ≤ 1.0pp)

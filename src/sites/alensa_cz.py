@@ -441,23 +441,33 @@ def add_to_cart(safe: SafePage, product_url: str,
     # only after a noticeable delay, and alensa.cz analytics keep the network
     # busy so wait_for_load_state('networkidle') is unreliable. Poll for one
     # of the entry points to appear, up to 15 s.
+    #
+    # Order matters — we MUST check the glasses-configurator signals (URL
+    # pattern, 'Brýle na dálku', 'Vybrat skla') BEFORE the generic
+    # `a[href*='do=addToBasket']` selector. Glasses pages can briefly
+    # render with a frame-only AJAX add link before the redirect kicks in,
+    # and we don't want to fall into _add_simple for what's really a
+    # frame+lens bundle test.
     deadline = _time.time() + 15.0
     while _time.time() < deadline:
         # Contact-lens product pages carry the sphere selector inline.
-        # Detect first so we don't accidentally hit the plain add link
-        # before picking a sphere.
         if _safe_is_visible(page.locator("select[name='primary[7]']").first, 250):
             _add_contact_lens(safe)
             return
-        if _safe_is_visible(page.locator("a[href*='do=addToBasket']").first, 250):
-            _add_simple(safe)
-            return
+        # Glasses configurator landed-state.
         if "/lenses-selector-detail/" in page.url or \
                 _safe_is_visible(page.locator("a:has-text('Brýle na dálku')").first, 250):
             _add_glasses(safe, skip_select_lenses=True, cart_mode=cart_mode)
             return
+        # Glasses frame product page (configurator entry point).
         if _safe_is_visible(page.locator("a:has-text('Vybrat skla')").first, 250):
             _add_glasses(safe, skip_select_lenses=False, cart_mode=cart_mode)
+            return
+        # Generic simple-add — last resort, matches any AJAX add anchor
+        # (solutions, drops, accessories, sunglasses, contact lenses with
+        # variants already picked).
+        if _safe_is_visible(page.locator("a[href*='do=addToBasket']").first, 250):
+            _add_simple(safe)
             return
         page.wait_for_timeout(500)
 

@@ -1,0 +1,18 @@
+Run 20260525_135148 — alensa.cz
+Summary: {'PASS': 12, 'FAIL': 0, 'NOT_APPLIED': 3, 'ERROR': 0, 'SKIPPED_EXPIRED': 0}
+
+[PASS       ] gel26care       (16.7s) — line 'roztok-gelone-360-ml' got 20.1% off (expected 20%, delta 0.10pp ≤ 1.0pp)
+[PASS       ] gel26care       (16.3s) — line 'roztok-gelone-100-ml' got 20.2% off (expected 20%, delta 0.20pp ≤ 1.0pp)
+[PASS       ] gel26care       (16.0s) — line 'roztok-gelone-2-x-360-ml' got 20.05% off (expected 20%, delta 0.05pp ≤ 1.0pp)
+[PASS       ] 8OEO-LNKH-NYGC  (16.8s) — line 'crulle-tr1886-c2' got 30.03% off (expected 30%, delta 0.03pp ≤ 1.0pp)
+[PASS       ] 8OEO-LNKH-NYGC  (16.2s) — line 'crulle-calm-c1' got 30.03% off (expected 30%, delta 0.03pp ≤ 1.0pp)
+[PASS       ] 8OEO-LNKH-NYGC  (17.0s) — line 'crulle-tr1886-c4' got 30.03% off (expected 30%, delta 0.03pp ≤ 1.0pp)
+[NOT_APPLIED] 25zskla         (17.0s) — observed total 899.0 CZK == baseline 899.0 CZK; site did not honor the code
+[NOT_APPLIED] 25zskla         (16.8s) — observed total 899.0 CZK == baseline 899.0 CZK; site did not honor the code
+[NOT_APPLIED] 25zskla         (16.9s) — observed total 899.0 CZK == baseline 899.0 CZK; site did not honor the code
+[PASS       ] 05flashsale26   (16.6s) — line 'biofinity-6-cocek' got 10.02% off (expected 10%, delta 0.02pp ≤ 1.0pp)
+[PASS       ] 05flashsale26   (16.3s) — line 'acuvue-oasys-6-cocek' got 10.02% off (expected 10%, delta 0.02pp ≤ 1.0pp)
+[PASS       ] 05flashsale26   (16.5s) — line 'air-optix-plus-hydraglyde-6-cocek' got 10.02% off (expected 10%, delta 0.02pp ≤ 1.0pp)
+[PASS       ] 05sun26         (17.2s) — basket-total: observed 30.03% vs expected 30.0% (delta 0.03pp ≤ 1.0pp)
+[PASS       ] 05sun26         (16.7s) — basket-total: observed 30.03% vs expected 30.0% (delta 0.03pp ≤ 1.0pp)
+[PASS       ] 05sun26         (16.5s) — basket-total: observed 30.03% vs expected 30.0% (delta 0.03pp ≤ 1.0pp)

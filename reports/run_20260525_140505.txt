@@ -1,0 +1,6 @@
+Run 20260525_140505 — alensa.cz
+Summary: {'PASS': 3, 'FAIL': 0, 'NOT_APPLIED': 0, 'ERROR': 0, 'SKIPPED_EXPIRED': 0}
+
+[PASS       ] 05sun26         (17.7s) — basket-total: observed 30.03% vs expected 30.0% (delta 0.03pp ≤ 1.0pp)
+[PASS       ] 05sun26         (16.7s) — basket-total: observed 30.03% vs expected 30.0% (delta 0.03pp ≤ 1.0pp)
+[PASS       ] 05sun26         (16.6s) — basket-total: observed 30.03% vs expected 30.0% (delta 0.03pp ≤ 1.0pp)
