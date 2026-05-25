@@ -143,6 +143,35 @@
         "delivery_method": null
       },
       "notes": ""
+    },
+    {
+      "name": "30% on selected sunglasses (choose brands)",
+      "code": "05sun26",
+      "description": "30% on selected sunglasses (choose brands)",
+      "active": true,
+      "discount_type": "percentage",
+      "value": 30.0,
+      "tolerance_pct": 1.0,
+      "test_product_url": null,
+      "non_matching_product_url": null,
+      "expected_flash_contains": [
+        "05sun26",
+        "-30%"
+      ],
+      "expires_at": null,
+      "usage_limit": null,
+      "combination_forbidden": false,
+      "min_items": null,
+      "applies_to": {
+        "brand": "Polaroid",
+        "product_type": "sunglasses",
+        "excluded_brands": []
+      },
+      "conditions": {
+        "min_basket_czk": null,
+        "delivery_method": null
+      },
+      "notes": ""
     }
   ]
 }

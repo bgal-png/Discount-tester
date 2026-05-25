@@ -26,6 +26,13 @@ HOST = "alensa.cz"
 BASE_URL = "https://www.alensa.cz/"
 CART_URL = "https://www.alensa.cz/nakup/kosik/"
 
+# Note on the add-to-cart anchor selector — `a[href*='do=addToBasket']`:
+# alensa uses different class combos per category. Solutions have an
+# exact 'detail-addToBasket-button' class, sunglasses only have the longer
+# 'datalayer-product-detail-addToBasket-button' which CSS `.foo` exact-
+# class match wouldn't catch. The href shape `?itemid=N&do=addToBasket`
+# is consistent across all product categories, so we match by that.
+
 # Category listing pages on alensa.cz. solutions and eye_drops share one
 # page; split them by the product name prefix below.
 CATEGORY_LISTING_URLS: dict[str, Optional[str]] = {
@@ -442,7 +449,7 @@ def add_to_cart(safe: SafePage, product_url: str,
         if _safe_is_visible(page.locator("select[name='primary[7]']").first, 250):
             _add_contact_lens(safe)
             return
-        if _safe_is_visible(page.locator("a.detail-addToBasket-button").first, 250):
+        if _safe_is_visible(page.locator("a[href*='do=addToBasket']").first, 250):
             _add_simple(safe)
             return
         if "/lenses-selector-detail/" in page.url or \
@@ -503,7 +510,7 @@ def _add_contact_lens(safe: SafePage) -> None:
     page.wait_for_timeout(500)
 
     # Now the standard add-to-cart anchor should be active.
-    btn = page.locator("a.detail-addToBasket-button").first
+    btn = page.locator("a[href*='do=addToBasket']").first
     btn.wait_for(state="visible", timeout=10_000)
     safe.safe_click(btn, description="add-to-cart-contact-lens")
     _wait_for_basket_committed(safe)
@@ -532,7 +539,7 @@ def _wait_for_basket_committed(safe: SafePage) -> None:
 
 def _add_simple(safe: SafePage) -> None:
     """Click the direct 'Vložit do košíku' link (solutions/drops flow)."""
-    btn = safe.page.locator("a.detail-addToBasket-button").first
+    btn = safe.page.locator("a[href*='do=addToBasket']").first
     btn.wait_for(state="visible", timeout=10_000)
     safe.safe_click(btn, description="add-to-cart-simple")
     _wait_for_basket_committed(safe)

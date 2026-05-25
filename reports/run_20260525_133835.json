@@ -1,0 +1,92 @@
+{
+  "timestamp": "20260525_133835",
+  "site": "alensa.cz",
+  "currency": "CZK",
+  "summary": {
+    "PASS": 0,
+    "FAIL": 0,
+    "NOT_APPLIED": 0,
+    "ERROR": 3,
+    "SKIPPED_EXPIRED": 0
+  },
+  "results": [
+    {
+      "name": "30% on selected sunglasses (choose brands)",
+      "code": "05sun26",
+      "product_url": "https://www.alensa.cz/polaroid-p8411-9ca-rc",
+      "expected_type": "percentage",
+      "expected_value": 30.0,
+      "tolerance_pct": 1.0,
+      "baseline_czk": null,
+      "observed_total_czk": null,
+      "observed_discount_czk": null,
+      "observed_discount_pct": null,
+      "line_items": [],
+      "flash_text": null,
+      "flash_check": null,
+      "negative_status": null,
+      "negative_detail": null,
+      "status": "ERROR",
+      "detail": "baseline measurement failed",
+      "duration_s": 0.0,
+      "diagnostics": {
+        "url": "https://www.alensa.cz/polaroid-p8411-9ca-rc",
+        "title": "Polaroid P8411 9CA/RC | Alensa.cz",
+        "screenshot": "reports/diagnostics/baseline_fail_20260525_134012_939742.png",
+        "html": "reports/diagnostics/baseline_fail_20260525_134012_939742.html"
+      }
+    },
+    {
+      "name": "30% on selected sunglasses (choose brands)",
+      "code": "05sun26",
+      "product_url": "https://www.alensa.cz/polaroid-p8317-kih-ix",
+      "expected_type": "percentage",
+      "expected_value": 30.0,
+      "tolerance_pct": 1.0,
+      "baseline_czk": null,
+      "observed_total_czk": null,
+      "observed_discount_czk": null,
+      "observed_discount_pct": null,
+      "line_items": [],
+      "flash_text": null,
+      "flash_check": null,
+      "negative_status": null,
+      "negative_detail": null,
+      "status": "ERROR",
+      "detail": "baseline measurement failed",
+      "duration_s": 0.0,
+      "diagnostics": {
+        "url": "https://www.alensa.cz/polaroid-p8317-kih-ix",
+        "title": "Polaroid P8317 KIH/IX | Alensa.cz",
+        "screenshot": "reports/diagnostics/baseline_fail_20260525_133929_236027.png",
+        "html": "reports/diagnostics/baseline_fail_20260525_133929_236027.html"
+      }
+    },
+    {
+      "name": "30% on selected sunglasses (choose brands)",
+      "code": "05sun26",
+      "product_url": "https://www.alensa.cz/polaroid-pld-6003-n-s-dl5-wj",
+      "expected_type": "percentage",
+      "expected_value": 30.0,
+      "tolerance_pct": 1.0,
+      "baseline_czk": null,
+      "observed_total_czk": null,
+      "observed_discount_czk": null,
+      "observed_discount_pct": null,
+      "line_items": [],
+      "flash_text": null,
+      "flash_check": null,
+      "negative_status": null,
+      "negative_detail": null,
+      "status": "ERROR",
+      "detail": "baseline measurement failed",
+      "duration_s": 0.0,
+      "diagnostics": {
+        "url": "https://www.alensa.cz/polaroid-pld-6003-n-s-dl5-wj",
+        "title": "Polaroid PLD 6003/N/S DL5/WJ | Alensa.cz",
+        "screenshot": "reports/diagnostics/baseline_fail_20260525_134056_981755.png",
+        "html": "reports/diagnostics/baseline_fail_20260525_134056_981755.html"
+      }
+    }
+  ]
+}

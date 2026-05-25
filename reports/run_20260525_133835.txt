@@ -1,0 +1,6 @@
+Run 20260525_133835 — alensa.cz
+Summary: {'PASS': 0, 'FAIL': 0, 'NOT_APPLIED': 0, 'ERROR': 3, 'SKIPPED_EXPIRED': 0}
+
+[ERROR      ] 05sun26         (0.0s) — baseline measurement failed
+[ERROR      ] 05sun26         (0.0s) — baseline measurement failed
+[ERROR      ] 05sun26         (0.0s) — baseline measurement failed
