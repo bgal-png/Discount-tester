@@ -301,8 +301,16 @@ def classify(d: Discount, baseline: float, observed_total: float,
 
 
 def cart_mode_for(d: Discount) -> str:
-    """Pick the add-to-cart sub-flow appropriate for this discount."""
-    if d.applies_to.product_type == "lenses_for_glasses":
+    """Pick the add-to-cart sub-flow appropriate for this discount.
+
+    product_type may be a single string or a list. If 'lenses_for_glasses'
+    is present, the with-lenses configurator path is needed; otherwise
+    'auto' (the dispatcher picks per-page).
+    """
+    pt = d.applies_to.product_type
+    if pt == "lenses_for_glasses":
+        return "with_lenses"
+    if isinstance(pt, list) and "lenses_for_glasses" in pt:
         return "with_lenses"
     return "auto"
 
@@ -425,13 +433,16 @@ def discover_products(p: Playwright, active: list[Discount], headed: bool,
         def _brand_key(b):
             return tuple(b) if isinstance(b, list) else b
 
+        def _ptype_key(pt):
+            return tuple(pt) if isinstance(pt, list) else pt
+
         for d in active:
             brand_k = _brand_key(d.applies_to.brand)
             # Positive products.
             if d.test_product_url:
                 positives = [d.test_product_url]
             elif sweep:
-                key = (brand_k, d.applies_to.product_type, "sweep")
+                key = (brand_k, _ptype_key(d.applies_to.product_type), "sweep")
                 if key not in positive_cache:
                     cards = alensa_cz.find_products_for_sweep(
                         safe,
@@ -443,7 +454,7 @@ def discover_products(p: Playwright, active: list[Discount], headed: bool,
                     positive_cache[key] = [c.url for c in cards]
                 positives = positive_cache[key]
             else:
-                key = (brand_k, d.applies_to.product_type, limit_per_discount)
+                key = (brand_k, _ptype_key(d.applies_to.product_type), limit_per_discount)
                 if key not in positive_cache:
                     cards = alensa_cz.find_products_in_category(
                         safe,
@@ -458,7 +469,7 @@ def discover_products(p: Playwright, active: list[Discount], headed: bool,
             if d.non_matching_product_url:
                 negative = d.non_matching_product_url
             else:
-                nkey = (brand_k, d.applies_to.product_type)
+                nkey = (brand_k, _ptype_key(d.applies_to.product_type))
                 if nkey not in negative_cache:
                     card = alensa_cz.find_non_matching_product(
                         safe,

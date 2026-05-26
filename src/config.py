@@ -35,7 +35,10 @@ class AppliesTo:
     # Single brand or list of brands. The runner treats a list as "any of
     # these brands qualifies" (matches OR-style backend Group selection).
     brand: Optional[str | list[str]] = None
-    product_type: Optional[str] = None
+    # Single product_type, list of types (e.g. ["glasses", "sunglasses"]),
+    # or None for "any". When a list is given the runner samples from
+    # each category and unions the results.
+    product_type: Optional[str | list[str]] = None
     # Brands explicitly excluded (e.g. "Spectacle lens brand - Zeiss/Hoya/Nikon"
     # in the backend's Vyřazené kategorie). Used by the negative test picker
     # and informational for humans reviewing the config.
@@ -110,15 +113,30 @@ def _parse_discount(d: dict, idx: int) -> Discount:
         raise ConfigError(
             f"{where}: applies_to.excluded_brands must be a list of strings"
         )
+    ptype = applies_raw.get("product_type")
+    if ptype is not None and not isinstance(ptype, (str, list)):
+        raise ConfigError(
+            f"{where}: applies_to.product_type must be string, list, or null"
+        )
+    if isinstance(ptype, list):
+        if not all(isinstance(t, str) for t in ptype):
+            raise ConfigError(
+                f"{where}: applies_to.product_type list must contain only strings"
+            )
+        bad = [t for t in ptype if t not in ALLOWED_PRODUCT_TYPES]
+        if bad:
+            raise ConfigError(
+                f"{where}: product_type values {bad!r} not in {ALLOWED_PRODUCT_TYPES}"
+            )
+    elif ptype not in ALLOWED_PRODUCT_TYPES:
+        raise ConfigError(
+            f"{where}: product_type '{ptype}' not in {ALLOWED_PRODUCT_TYPES}"
+        )
     applies = AppliesTo(
         brand=brand,
-        product_type=applies_raw.get("product_type"),
+        product_type=ptype,
         excluded_brands=excluded_brands_raw,
     )
-    if applies.product_type not in ALLOWED_PRODUCT_TYPES:
-        raise ConfigError(
-            f"{where}: product_type '{applies.product_type}' not in {ALLOWED_PRODUCT_TYPES}"
-        )
 
     cond_raw = d.get("conditions") or {}
     cond = Conditions(

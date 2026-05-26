@@ -796,11 +796,13 @@ with tab_add:
                       "'Vyřazené kategorie'."),
             )
         with c2:
-            f_ptype = st.selectbox(
-                "Product type",
-                options=PRODUCT_TYPE_OPTIONS,
-                help=("Maps to the category page the runner will pick test "
-                      "products from. '(none)' = any."),
+            f_ptypes = st.multiselect(
+                "Product type(s)",
+                options=[t for t in PRODUCT_TYPE_OPTIONS if t != "(none)"],
+                help=("Maps to the category page(s) the runner samples test "
+                      "products from. Pick more than one for combo discounts "
+                      "(e.g. 'glasses' + 'sunglasses'). Leave empty for "
+                      "'any product type'."),
             )
 
         st.markdown("---")
@@ -918,7 +920,10 @@ with tab_add:
                 "min_items": int(f_min_items) if f_min_items > 0 else None,
                 "applies_to": {
                     "brand": brand_value,
-                    "product_type": (None if f_ptype == "(none)" else f_ptype),
+                    "product_type": (
+                        None if not f_ptypes
+                        else (f_ptypes[0] if len(f_ptypes) == 1 else list(f_ptypes))
+                    ),
                     "excluded_brands": _csv_to_list(f_excluded),
                 },
                 "conditions": {

@@ -206,154 +206,172 @@ def _brand_matches(product_name: str, brand: Optional[str | list[str]]) -> bool:
     return any(b.lower() in name_lc for b in brand)
 
 
+def _types_list(product_type: Optional[str | list[str]]) -> list[Optional[str]]:
+    """Normalise product_type into a list. None -> [None]; str -> [str];
+    list -> the list. Lets find_* functions loop uniformly."""
+    if product_type is None:
+        return [None]
+    if isinstance(product_type, str):
+        return [product_type]
+    return list(product_type) or [None]
+
+
 def find_products_in_category(safe: SafePage, *,
-                              product_type: Optional[str],
+                              product_type: Optional[str | list[str]],
                               brand: Optional[str | list[str]] = None,
                               limit: int = 3) -> list[ProductCard]:
     """Return up to `limit` product cards matching brand + product_type.
 
-    brand may be a single string OR a list (matches if ANY listed brand
-    appears in the product name). Returns [] if the category has no listing
-    URL configured or the product type requires variants.
+    product_type may be a single string OR a list (e.g. ['glasses',
+    'sunglasses']) — listings are visited in order, results unioned,
+    de-duped by URL. brand similarly accepts a single string or a list.
+    Variant-required types (currently empty) are skipped.
     """
-    if product_type in VARIANT_REQUIRED_TYPES:
-        return []
-    url = CATEGORY_LISTING_URLS.get(product_type) if product_type else None
-    if not url:
-        return []
-    cards = list_products_on_category_page(safe, url)
-    prefixes = PRODUCT_TYPE_NAME_PREFIXES.get(product_type or "")
     out: list[ProductCard] = []
-    for c in cards:
-        if prefixes and not any(c.name.startswith(p) for p in prefixes):
-            continue
-        if not _brand_matches(c.name, brand):
-            continue
-        out.append(c)
+    seen_urls: set[str] = set()
+    for one_type in _types_list(product_type):
         if len(out) >= limit:
             break
+        if one_type in VARIANT_REQUIRED_TYPES:
+            continue
+        url = CATEGORY_LISTING_URLS.get(one_type) if one_type else None
+        if not url:
+            continue
+        cards = list_products_on_category_page(safe, url)
+        prefixes = PRODUCT_TYPE_NAME_PREFIXES.get(one_type or "")
+        for c in cards:
+            if c.url in seen_urls:
+                continue
+            if prefixes and not any(c.name.startswith(p) for p in prefixes):
+                continue
+            if not _brand_matches(c.name, brand):
+                continue
+            out.append(c)
+            seen_urls.add(c.url)
+            if len(out) >= limit:
+                break
     return out
 
 
 def find_products_for_sweep(safe: SafePage, *,
-                            product_type: Optional[str],
+                            product_type: Optional[str | list[str]],
                             brand: Optional[str | list[str]] = None,
                             n_cheapest: int = 5,
                             n_default: int = 10,
                             n_per_brand: int = 1) -> list[ProductCard]:
     """Stratified sample for focused-sweep mode.
 
-    Pulls:
-      - up to `n_cheapest` products from the price-ascending listing
-        (where €1-style outliers hide)
+    Per product_type (loops if a list is given):
+      - up to `n_cheapest` from the price-ascending listing
       - up to `n_default` from the default popularity sort
-      - up to `n_per_brand` from EACH brand-filtered listing when `brand`
-        is a list of brands (multi-brand restricted discount). Catches
-        per-brand backend-tagging bugs: 'Polaroid frames are mis-tagged so
-        the discount doesn't apply on any of them'.
+      - up to `n_per_brand` from EACH brand-filtered listing (only when
+        `brand` is a list of >1 brands — catches per-brand backend-tagging
+        bugs)
 
-    De-dups by URL. Skips brand listings with no URL pattern configured.
+    De-dups by URL across the whole result.
     """
-    if product_type in VARIANT_REQUIRED_TYPES:
-        return []
-    base_url = CATEGORY_LISTING_URLS.get(product_type) if product_type else None
-    if not base_url:
-        return []
-
-    prefixes = PRODUCT_TYPE_NAME_PREFIXES.get(product_type or "")
-
-    def _matches(card: ProductCard) -> bool:
-        if prefixes and not any(card.name.startswith(p) for p in prefixes):
-            return False
-        return _brand_matches(card.name, brand)
-
     seen_urls: set[str] = set()
     picks: list[ProductCard] = []
 
-    def _add_from(cards: list[ProductCard], limit: int) -> int:
-        added = 0
-        for c in cards:
-            if not _matches(c) or c.url in seen_urls:
-                continue
-            picks.append(c)
-            seen_urls.add(c.url)
-            added += 1
-            if added >= limit:
-                break
-        return added
+    for one_type in _types_list(product_type):
+        if one_type in VARIANT_REQUIRED_TYPES:
+            continue
+        base_url = CATEGORY_LISTING_URLS.get(one_type) if one_type else None
+        if not base_url:
+            continue
 
-    # Bucket 1: cheapest first.
-    _add_from(
-        list_products_on_category_page(safe, base_url + LISTING_SORT_CHEAPEST),
-        n_cheapest,
-    )
+        prefixes = PRODUCT_TYPE_NAME_PREFIXES.get(one_type or "")
 
-    # Bucket 2: default sort.
-    _add_from(list_products_on_category_page(safe, base_url), n_default)
+        def _matches(card: ProductCard, _prefixes=prefixes) -> bool:
+            if _prefixes and not any(card.name.startswith(p) for p in _prefixes):
+                return False
+            return _brand_matches(card.name, brand)
 
-    # Bucket 3: per-brand listing. Only when brand is a list — single-brand
-    # discounts already get full coverage from buckets 1 & 2 since they
-    # filter to that brand. We use the host's full URL plus the brand path
-    # so /brylove-obroucky.html and /brylove-obroucky/polaroid both work.
-    brand_path = BRAND_FILTER_PATHS.get(product_type or "")
-    if brand_path and isinstance(brand, list) and len(brand) > 1:
-        for one_brand in brand:
-            slug = _slugify_brand(one_brand)
-            url = f"https://www.alensa.cz{brand_path}/{slug}"
-            try:
-                cards = list_products_on_category_page(safe, url)
-            except Exception:
-                continue
-            # Inside a brand-filtered listing every card is already the
-            # right brand, so we skip the _matches brand-check by bypassing
-            # the closure. We still de-dup against seen_urls.
+        def _add_from(cards: list[ProductCard], limit: int) -> int:
             added = 0
             for c in cards:
-                if c.url in seen_urls:
-                    continue
-                if prefixes and not any(c.name.startswith(p) for p in prefixes):
+                if not _matches(c) or c.url in seen_urls:
                     continue
                 picks.append(c)
                 seen_urls.add(c.url)
                 added += 1
-                if added >= n_per_brand:
+                if added >= limit:
                     break
+            return added
+
+        # Bucket 1: cheapest first.
+        _add_from(
+            list_products_on_category_page(safe, base_url + LISTING_SORT_CHEAPEST),
+            n_cheapest,
+        )
+
+        # Bucket 2: default sort.
+        _add_from(list_products_on_category_page(safe, base_url), n_default)
+
+        # Bucket 3: per-brand listing for THIS type.
+        brand_path = BRAND_FILTER_PATHS.get(one_type or "")
+        if brand_path and isinstance(brand, list) and len(brand) > 1:
+            for one_brand in brand:
+                slug = _slugify_brand(one_brand)
+                url = f"https://www.alensa.cz{brand_path}/{slug}"
+                try:
+                    cards = list_products_on_category_page(safe, url)
+                except Exception:
+                    continue
+                added = 0
+                for c in cards:
+                    if c.url in seen_urls:
+                        continue
+                    if prefixes and not any(c.name.startswith(p) for p in prefixes):
+                        continue
+                    picks.append(c)
+                    seen_urls.add(c.url)
+                    added += 1
+                    if added >= n_per_brand:
+                        break
 
     return picks
 
 
 def find_non_matching_product(safe: SafePage, *,
-                              exclude_product_type: Optional[str],
+                              exclude_product_type: Optional[str | list[str]],
                               exclude_brand: Optional[str | list[str]] = None
                               ) -> Optional[ProductCard]:
-    """Return a single product that doesn't match the given brand(s)+type.
+    """Return a single product that doesn't match the given brand(s)+type(s).
 
     Strategy:
-      1. If exclude_brand is set: prefer a SAME product_type / DIFFERENT brand
-         product (tests the brand restriction directly, and stays in a
-         category we know how to add to cart).
+      1. If exclude_brand is set: prefer SAME product_type / DIFFERENT brand
+         (tests the brand restriction directly, stays in a cart-flow we know).
       2. Otherwise: pick a product from a different product_type entirely.
 
-    Skips variant-required types (contact lenses) in either strategy.
+    Skips variant-required types in either strategy.
     """
-    # Strategy 1: same product_type, different brand(s).
-    if exclude_brand and exclude_product_type and \
-            exclude_product_type not in VARIANT_REQUIRED_TYPES:
-        url = CATEGORY_LISTING_URLS.get(exclude_product_type)
-        if url:
-            prefixes = PRODUCT_TYPE_NAME_PREFIXES.get(exclude_product_type)
+    excluded_types = [t for t in _types_list(exclude_product_type) if t is not None]
+    excluded_urls = {CATEGORY_LISTING_URLS.get(t)
+                     for t in excluded_types
+                     if CATEGORY_LISTING_URLS.get(t)}
+
+    # Strategy 1: same product_type(s), different brand. Iterate each excluded
+    # type in turn — the first one with a usable cart flow + non-matching
+    # brand wins.
+    if exclude_brand:
+        for ptype in excluded_types:
+            if ptype in VARIANT_REQUIRED_TYPES:
+                continue
+            url = CATEGORY_LISTING_URLS.get(ptype)
+            if not url:
+                continue
+            prefixes = PRODUCT_TYPE_NAME_PREFIXES.get(ptype)
             for c in list_products_on_category_page(safe, url):
                 if prefixes and not any(c.name.startswith(p) for p in prefixes):
                     continue
                 if _brand_matches(c.name, exclude_brand):
-                    continue  # this card IS one of the excluded brands -> skip
+                    continue  # IS one of the excluded brands -> skip
                 return c
 
-    # Strategy 2: different product_type.
-    excluded_url = (CATEGORY_LISTING_URLS.get(exclude_product_type)
-                    if exclude_product_type else None)
+    # Strategy 2: different product_type entirely.
     for ptype, url in CATEGORY_LISTING_URLS.items():
-        if not url or url == excluded_url or ptype in VARIANT_REQUIRED_TYPES:
+        if not url or url in excluded_urls or ptype in VARIANT_REQUIRED_TYPES:
             continue
         prefixes = PRODUCT_TYPE_NAME_PREFIXES.get(ptype)
         for c in list_products_on_category_page(safe, url):
