@@ -219,13 +219,17 @@ def _types_list(product_type: Optional[str | list[str]]) -> list[Optional[str]]:
 def find_products_in_category(safe: SafePage, *,
                               product_type: Optional[str | list[str]],
                               brand: Optional[str | list[str]] = None,
-                              limit: int = 3) -> list[ProductCard]:
+                              limit: int = 3,
+                              min_basket_czk: Optional[float] = None,
+                              ) -> list[ProductCard]:
     """Return up to `limit` product cards matching brand + product_type.
 
-    product_type may be a single string OR a list (e.g. ['glasses',
-    'sunglasses']) — listings are visited in order, results unioned,
+    product_type may be a single string OR a list — listings unioned,
     de-duped by URL. brand similarly accepts a single string or a list.
     Variant-required types (currently empty) are skipped.
+
+    If `min_basket_czk` is set, guarantees at least one below-threshold
+    product is included for boundary testing.
     """
     out: list[ProductCard] = []
     seen_urls: set[str] = set()
@@ -250,6 +254,38 @@ def find_products_in_category(safe: SafePage, *,
             seen_urls.add(c.url)
             if len(out) >= limit:
                 break
+
+    # Boundary coverage: when a min_basket_czk is set, ensure at least one
+    # below-threshold product so we can verify the rule's enforcement.
+    if min_basket_czk and not any(
+        p.price_czk is not None and p.price_czk < min_basket_czk for p in out
+    ):
+        for one_type in _types_list(product_type):
+            if one_type in VARIANT_REQUIRED_TYPES:
+                continue
+            base_url = CATEGORY_LISTING_URLS.get(one_type) if one_type else None
+            if not base_url:
+                continue
+            prefixes = PRODUCT_TYPE_NAME_PREFIXES.get(one_type or "")
+            cheapest = list_products_on_category_page(
+                safe, base_url + LISTING_SORT_CHEAPEST
+            )
+            for c in cheapest:
+                if c.url in seen_urls:
+                    continue
+                if c.price_czk is None or c.price_czk >= min_basket_czk:
+                    continue
+                if prefixes and not any(c.name.startswith(p) for p in prefixes):
+                    continue
+                if not _brand_matches(c.name, brand):
+                    continue
+                out.append(c)
+                seen_urls.add(c.url)
+                break  # one is enough for sample mode
+            else:
+                continue
+            break
+
     return out
 
 
@@ -258,7 +294,9 @@ def find_products_for_sweep(safe: SafePage, *,
                             brand: Optional[str | list[str]] = None,
                             n_cheapest: int = 5,
                             n_default: int = 10,
-                            n_per_brand: int = 1) -> list[ProductCard]:
+                            n_per_brand: int = 1,
+                            min_basket_czk: Optional[float] = None,
+                            n_below_threshold: int = 2) -> list[ProductCard]:
     """Stratified sample for focused-sweep mode.
 
     Per product_type (loops if a list is given):
@@ -267,6 +305,9 @@ def find_products_for_sweep(safe: SafePage, *,
       - up to `n_per_brand` from EACH brand-filtered listing (only when
         `brand` is a list of >1 brands — catches per-brand backend-tagging
         bugs)
+      - if `min_basket_czk` is set: guarantees at least `n_below_threshold`
+        products with price < threshold (for boundary testing — verifying
+        the discount engine correctly REFUSES below-threshold baskets)
 
     De-dups by URL across the whole result.
     """
@@ -329,6 +370,40 @@ def find_products_for_sweep(safe: SafePage, *,
                     added += 1
                     if added >= n_per_brand:
                         break
+
+    # Bucket 4: guarantee below-threshold coverage for min_basket_czk
+    # discounts. The cheapest bucket may already include below-threshold
+    # products; only top up if we didn't reach the target.
+    if min_basket_czk and n_below_threshold > 0:
+        below = [p for p in picks
+                 if p.price_czk is not None and p.price_czk < min_basket_czk]
+        if len(below) < n_below_threshold:
+            for one_type in _types_list(product_type):
+                if one_type in VARIANT_REQUIRED_TYPES:
+                    continue
+                base_url = CATEGORY_LISTING_URLS.get(one_type) if one_type else None
+                if not base_url:
+                    continue
+                prefixes = PRODUCT_TYPE_NAME_PREFIXES.get(one_type or "")
+                cheapest = list_products_on_category_page(
+                    safe, base_url + LISTING_SORT_CHEAPEST
+                )
+                for c in cheapest:
+                    if c.url in seen_urls:
+                        continue
+                    if c.price_czk is None or c.price_czk >= min_basket_czk:
+                        continue
+                    if prefixes and not any(c.name.startswith(p) for p in prefixes):
+                        continue
+                    if not _brand_matches(c.name, brand):
+                        continue
+                    picks.append(c)
+                    seen_urls.add(c.url)
+                    below.append(c)
+                    if len(below) >= n_below_threshold:
+                        break
+                if len(below) >= n_below_threshold:
+                    break
 
     return picks
 

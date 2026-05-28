@@ -1,0 +1,18 @@
+Run 20260528_122106 — alensa.cz
+Summary: {'PASS': 15, 'FAIL': 0, 'NOT_APPLIED': 0, 'ERROR': 0, 'SKIPPED_EXPIRED': 0}
+
+[PASS       ] gel26care       (15.9s) — line 'roztok-gelone-360-ml' got 20.1% off (expected 20%, delta 0.10pp ≤ 1.0pp)
+[PASS       ] gel26care       (18.5s) — line 'roztok-gelone-100-ml' got 20.2% off (expected 20%, delta 0.20pp ≤ 1.0pp)
+[PASS       ] gel26care       (15.9s) — line 'roztok-gelone-2-x-360-ml' got 20.05% off (expected 20%, delta 0.05pp ≤ 1.0pp)
+[PASS       ] 8OEO-LNKH-NYGC  (30.0s) — line 'crulle-tr1886-c2' got 30.03% off (expected 30%, delta 0.03pp ≤ 1.0pp)
+[PASS       ] 8OEO-LNKH-NYGC  (30.6s) — line 'crulle-calm-c1' got 30.03% off (expected 30%, delta 0.03pp ≤ 1.0pp)
+[PASS       ] 8OEO-LNKH-NYGC  (30.4s) — line 'crulle-tr1886-c4' got 30.03% off (expected 30%, delta 0.03pp ≤ 1.0pp)
+[PASS       ] 25zskla         (64.1s) — line '2x Brýlová čočka Adrial 1.5 (čirá)' got 24.9% off (expected 25%, delta 0.10pp ≤ 1.0pp)
+[PASS       ] 25zskla         (62.5s) — line '2x Brýlová čočka Adrial 1.5 (čirá)' got 24.9% off (expected 25%, delta 0.10pp ≤ 1.0pp)
+[PASS       ] 25zskla         (62.6s) — line '2x Brýlová čočka Adrial 1.5 (čirá)' got 24.9% off (expected 25%, delta 0.10pp ≤ 1.0pp)
+[PASS       ] 05flashsale26   (16.6s) — line 'biofinity-6-cocek' got 10.02% off (expected 10%, delta 0.02pp ≤ 1.0pp)
+[PASS       ] 05flashsale26   (54.2s) — line 'acuvue-oasys-6-cocek' got 10.02% off (expected 10%, delta 0.02pp ≤ 1.0pp)
+[PASS       ] 05flashsale26   (17.5s) — line 'air-optix-plus-hydraglyde-6-cocek' got 10.02% off (expected 10%, delta 0.02pp ≤ 1.0pp)
+[PASS       ] 05sun26         (17.0s) — basket-total: observed 30.03% vs expected 30.0% (delta 0.03pp ≤ 1.0pp)
+[PASS       ] 05sun26         (16.7s) — basket-total: observed 30.03% vs expected 30.0% (delta 0.03pp ≤ 1.0pp)
+[PASS       ] 05sun26         (16.8s) — basket-total: observed 30.03% vs expected 30.0% (delta 0.03pp ≤ 1.0pp)

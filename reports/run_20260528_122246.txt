@@ -1,0 +1,6 @@
+Run 20260528_122246 — alensa.cz
+Summary: {'PASS': 2, 'FAIL': 0, 'NOT_APPLIED': 1, 'ERROR': 0, 'SKIPPED_EXPIRED': 0}
+
+[NOT_APPLIED] 300BILLA211676  (17.2s) — observed total 229.0 CZK == baseline 229.0 CZK; site did not honor the code
+[PASS       ] 300BILLA211676  (17.0s) — basket-total: observed -300.0 CZK vs expected -300.0 CZK
+[PASS       ] 300BILLA211676  (17.6s) — basket-total: observed -300.0 CZK vs expected -300.0 CZK

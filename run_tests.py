@@ -222,16 +222,32 @@ def classify(d: Discount, baseline: float, observed_total: float,
              ) -> tuple[str, str, Optional[float]]:
     """Return (status, detail, observed_pct_used).
 
-    Per-line check (preferred): if any cart line is discounted, the
-    discount applies. We compare the LARGEST per-line discount % to the
-    expected value — that's the line the coupon actually hit. This catches
-    "discount applied to lens portion only" cases where the basket total
-    shows a smaller % off.
+    Threshold boundary: when discount has min_basket_czk and the picked
+    product's baseline is BELOW the threshold, expected outcome is
+    'discount must NOT apply'. PASS if observed == baseline (rule
+    enforced), FAIL if any discount applied (rule violated).
 
-    Falls back to basket-total math when no line shows is_discounted=True
-    (older flow / sites that show only basket-level discounts).
+    Per-line check (above-threshold): the LARGEST per-line discount %
+    is compared to the expected value. Falls back to basket-total math
+    when no line shows is_discounted=True.
     """
     discount = round(baseline - observed_total, 2)
+    threshold = d.conditions.min_basket_czk
+
+    # Threshold boundary test: product priced below the required basket
+    # minimum — the discount engine MUST refuse.
+    if threshold is not None and baseline < threshold:
+        if discount <= 0:
+            return "PASS", (
+                f"threshold correctly enforced: basket {baseline} CZK < "
+                f"min {threshold:g} CZK, no discount applied"
+            ), 0.0
+        return "FAIL", (
+            f"THRESHOLD VIOLATED: basket {baseline} CZK is below the "
+            f"min_basket_czk = {threshold:g}, but the discount engine "
+            f"applied -{discount} CZK anyway"
+        ), None
+
     if discount <= 0:
         return "NOT_APPLIED", (
             f"observed total {observed_total} CZK == baseline {baseline} CZK; "
@@ -438,11 +454,13 @@ def discover_products(p: Playwright, active: list[Discount], headed: bool,
 
         for d in active:
             brand_k = _brand_key(d.applies_to.brand)
+            min_basket = d.conditions.min_basket_czk
             # Positive products.
             if d.test_product_url:
                 positives = [d.test_product_url]
             elif sweep:
-                key = (brand_k, _ptype_key(d.applies_to.product_type), "sweep")
+                key = (brand_k, _ptype_key(d.applies_to.product_type),
+                       "sweep", min_basket)
                 if key not in positive_cache:
                     cards = alensa_cz.find_products_for_sweep(
                         safe,
@@ -450,17 +468,20 @@ def discover_products(p: Playwright, active: list[Discount], headed: bool,
                         product_type=d.applies_to.product_type,
                         n_cheapest=5,
                         n_default=5,
+                        min_basket_czk=min_basket,
                     )
                     positive_cache[key] = [c.url for c in cards]
                 positives = positive_cache[key]
             else:
-                key = (brand_k, _ptype_key(d.applies_to.product_type), limit_per_discount)
+                key = (brand_k, _ptype_key(d.applies_to.product_type),
+                       limit_per_discount, min_basket)
                 if key not in positive_cache:
                     cards = alensa_cz.find_products_in_category(
                         safe,
                         brand=d.applies_to.brand,
                         product_type=d.applies_to.product_type,
                         limit=limit_per_discount,
+                        min_basket_czk=min_basket,
                     )
                     positive_cache[key] = [c.url for c in cards]
                 positives = positive_cache[key]

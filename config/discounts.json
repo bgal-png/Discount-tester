@@ -176,6 +176,32 @@
         "delivery_method": null
       },
       "notes": ""
+    },
+    {
+      "name": "Billa - 300 Kč na sluneční brýle nad 500 Kč",
+      "code": "300BILLA211676",
+      "description": "",
+      "active": true,
+      "discount_type": "fixed_amount",
+      "value": 300.0,
+      "tolerance_pct": 1.0,
+      "test_product_url": null,
+      "non_matching_product_url": null,
+      "expected_flash_contains": [],
+      "expires_at": null,
+      "usage_limit": null,
+      "combination_forbidden": true,
+      "min_items": null,
+      "applies_to": {
+        "brand": null,
+        "product_type": "sunglasses",
+        "excluded_brands": []
+      },
+      "conditions": {
+        "min_basket_czk": 500.0,
+        "delivery_method": null
+      },
+      "notes": ""
     }
   ]
 }
