@@ -17,3 +17,7 @@ reports/flash_*.png
 reports/diagnostics/
 !reports/.gitkeep
 .playwright/
+# Saved admin category-grid HTML pages — large, regenerable, not committed.
+# Drop your page_*.html exports here and run build_category_catalog.py
+category_pages/*.html
+config/category_catalog.xlsx
