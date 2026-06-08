@@ -557,8 +557,8 @@ with st.sidebar:
 
 
 # --- Tabs ---
-tab_run, tab_discounts, tab_add, tab_edit, tab_reports = st.tabs(
-    ["▶ Run tests", "📋 Discounts", "➕ Add discount",
+tab_run, tab_discounts, tab_add, tab_import, tab_edit, tab_reports = st.tabs(
+    ["▶ Run tests", "📋 Discounts", "➕ Add discount", "📥 Import from HTML",
      "📝 Edit / Delete", "📂 Past reports"]
 )
 
@@ -949,6 +949,112 @@ with tab_add:
                     st.balloons()
                 except Exception as e:
                     st.error(f"Failed to write file: {e}")
+
+
+# ---- Import from HTML tab ----
+with tab_import:
+    st.subheader("Import a discount from admin HTML")
+    st.caption(
+        "Paste the full HTML of a discount's admin edit page. The parser "
+        "reads the hidden `previousValues` field (a complete dump of the "
+        "form) plus the active-code list, and builds a discount entry. "
+        "Brand & product type are guessed from the discount text — always "
+        "verify them. New entries import as **inactive**."
+    )
+
+    html_text = st.text_area(
+        "Paste admin edit-page HTML here",
+        height=220,
+        key="import_html_text",
+        placeholder="<section class=\"content\"> ... full page source ... </section>",
+    )
+
+    parse_clicked = st.button("🔍 Parse", type="primary",
+                              disabled=not html_text.strip())
+
+    if parse_clicked:
+        from src.admin_import import parse_admin_html, AdminImportError
+        try:
+            result = parse_admin_html(html_text)
+            st.session_state["import_parsed"] = result.discount
+            st.session_state["import_warnings"] = result.warnings
+        except AdminImportError as e:
+            st.session_state.pop("import_parsed", None)
+            st.error(f"Parse failed: {e}")
+        except Exception as e:
+            st.session_state.pop("import_parsed", None)
+            st.error(f"Unexpected error: {type(e).__name__}: {e}")
+
+    parsed = st.session_state.get("import_parsed")
+    if parsed:
+        st.markdown("### Parsed result")
+        # Quick human summary
+        ptype = parsed["applies_to"]["product_type"]
+        brand = parsed["applies_to"]["brand"]
+        cols = st.columns(3)
+        cols[0].metric("Code", parsed["code"] or "—")
+        cols[1].metric("Value",
+                       f"{parsed['value']:g}{'%' if parsed['discount_type']=='percentage' else ' CZK'}")
+        cols[2].metric("Type", str(ptype or "—"))
+        st.write(f"**Name:** {parsed['name']}")
+        st.write(f"**Brand(s):** {brand if brand else '(any / none detected)'}")
+
+        for w in st.session_state.get("import_warnings", []):
+            st.warning(w)
+
+        # Editable JSON before saving — operator can fix brand/type here.
+        edit_key = "import_edit_json"
+        if edit_key not in st.session_state:
+            st.session_state[edit_key] = json.dumps(parsed, indent=2,
+                                                    ensure_ascii=False)
+        edited = st.text_area("Review / edit before saving", height=380,
+                              key=edit_key)
+
+        # Validate the (possibly edited) JSON.
+        imp_err = None
+        imp_obj = None
+        try:
+            imp_obj = json.loads(edited)
+            err = _validate_discount_dict(imp_obj)
+            if err:
+                imp_err = f"Schema error: {err}"
+        except json.JSONDecodeError as e:
+            imp_err = f"JSON syntax error: {e}"
+
+        save_col, _ = st.columns([1, 3])
+        with save_col:
+            do_save = st.button("💾 Save to discounts.json",
+                                type="primary",
+                                disabled=imp_err is not None,
+                                key="import_save_btn")
+        if imp_err:
+            st.error(imp_err)
+
+        if do_save and imp_obj is not None:
+            try:
+                doc = _load_raw_config()
+                existing = {str(d.get("code","")).lower()
+                            for d in doc.get("discounts", [])}
+                if str(imp_obj.get("code","")).lower() in existing:
+                    st.error(
+                        f"Code '{imp_obj.get('code')}' already exists. Edit it "
+                        "in the **📝 Edit / Delete** tab instead."
+                    )
+                else:
+                    doc.setdefault("discounts", []).append(imp_obj)
+                    _write_raw_config(doc)
+                    st.success(
+                        f"✅ Imported '{imp_obj.get('code')}' (inactive). "
+                        "Verify it in **▶ Run tests**, then activate."
+                    )
+                    # Clear so the next paste starts fresh.
+                    for k in ("import_parsed", "import_warnings",
+                              "import_edit_json", "import_html_text"):
+                        st.session_state.pop(k, None)
+                    st.balloons()
+                    st.rerun()
+            except Exception as e:
+                st.error(f"Failed to write file: {e}")
 
 
 # ---- Edit / Delete tab ----

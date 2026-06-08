@@ -1,0 +1,21 @@
+Run 20260528_123538 — alensa.cz
+Summary: {'PASS': 18, 'FAIL': 0, 'NOT_APPLIED': 0, 'ERROR': 0, 'SKIPPED_EXPIRED': 0}
+
+[PASS       ] gel26care       (16.0s) — line 'roztok-gelone-360-ml' got 20.1% off (expected 20%, delta 0.10pp ≤ 1.0pp)
+[PASS       ] gel26care       (16.0s) — line 'roztok-gelone-100-ml' got 20.2% off (expected 20%, delta 0.20pp ≤ 1.0pp)
+[PASS       ] gel26care       (17.1s) — line 'roztok-gelone-2-x-360-ml' got 20.05% off (expected 20%, delta 0.05pp ≤ 1.0pp)
+[PASS       ] 8OEO-LNKH-NYGC  (29.8s) — line 'crulle-tr1886-c2' got 30.03% off (expected 30%, delta 0.03pp ≤ 1.0pp)
+[PASS       ] 8OEO-LNKH-NYGC  (32.0s) — line 'crulle-calm-c1' got 30.03% off (expected 30%, delta 0.03pp ≤ 1.0pp)
+[PASS       ] 8OEO-LNKH-NYGC  (29.6s) — line 'crulle-tr1886-c4' got 30.03% off (expected 30%, delta 0.03pp ≤ 1.0pp)
+[PASS       ] 25zskla         (133.0s) — line '2x Brýlová čočka Adrial 1.5 (čirá)' got 24.9% off (expected 25%, delta 0.10pp ≤ 1.0pp)
+[PASS       ] 25zskla         (62.1s) — line '2x Brýlová čočka Adrial 1.5 (čirá)' got 24.9% off (expected 25%, delta 0.10pp ≤ 1.0pp)
+[PASS       ] 25zskla         (63.4s) — line '2x Brýlová čočka Adrial 1.5 (čirá)' got 24.9% off (expected 25%, delta 0.10pp ≤ 1.0pp)
+[PASS       ] 05flashsale26   (16.7s) — line 'biofinity-6-cocek' got 10.02% off (expected 10%, delta 0.02pp ≤ 1.0pp)
+[PASS       ] 05flashsale26   (70.5s) — line 'acuvue-oasys-6-cocek' got 10.02% off (expected 10%, delta 0.02pp ≤ 1.0pp)
+[PASS       ] 05flashsale26   (18.3s) — line 'air-optix-plus-hydraglyde-6-cocek' got 10.02% off (expected 10%, delta 0.02pp ≤ 1.0pp)
+[PASS       ] 05sun26         (17.8s) — basket-total: observed 30.03% vs expected 30.0% (delta 0.03pp ≤ 1.0pp)
+[PASS       ] 05sun26         (16.7s) — basket-total: observed 30.03% vs expected 30.0% (delta 0.03pp ≤ 1.0pp)
+[PASS       ] 05sun26         (16.7s) — basket-total: observed 30.03% vs expected 30.0% (delta 0.03pp ≤ 1.0pp)
+[PASS       ] 300BILLA211676  (16.5s) — threshold correctly enforced: basket 229.0 CZK < min 500 CZK, no discount applied
+[PASS       ] 300BILLA211676  (16.9s) — basket-total: observed -300.0 CZK vs expected -300.0 CZK
+[PASS       ] 300BILLA211676  (16.8s) — basket-total: observed -300.0 CZK vs expected -300.0 CZK

@@ -1,0 +1,434 @@
+{
+  "timestamp": "20260528_141040",
+  "site": "alensa.cz",
+  "currency": "CZK",
+  "summary": {
+    "PASS": 9,
+    "FAIL": 1,
+    "NOT_APPLIED": 0,
+    "ERROR": 0,
+    "SKIPPED_EXPIRED": 0
+  },
+  "results": [
+    {
+      "name": "500 Kč při nákupu nad 1000 Kč pro Crullé kompletní brýle",
+      "code": "jetojenvhlave500",
+      "product_url": "https://www.alensa.cz/crulle-kids-coloring-c6",
+      "expected_type": "fixed_amount",
+      "expected_value": 500.0,
+      "tolerance_pct": 1.0,
+      "baseline_czk": 948.0,
+      "observed_total_czk": 450.0,
+      "observed_discount_czk": 498.0,
+      "observed_discount_pct": 52.53,
+      "line_items": [
+        {
+          "url_slug": "crulle-kids-coloring-c6",
+          "name": "Crullé Kids Coloring C6",
+          "quantity": 1,
+          "original_unit_price_czk": 899.0,
+          "current_unit_price_czk": 450.0,
+          "is_discounted": true,
+          "discount_pct": 49.94,
+          "discount_czk": 449.0
+        },
+        {
+          "url_slug": "",
+          "name": "2x Brýlová čočka Adrial 1.5 (čirá)",
+          "quantity": 1,
+          "original_unit_price_czk": 498.0,
+          "current_unit_price_czk": 498.0,
+          "is_discounted": false,
+          "discount_pct": 0.0,
+          "discount_czk": 0.0
+        }
+      ],
+      "flash_text": "Slevový kód: jetojenvhlave500",
+      "flash_check": "skipped",
+      "negative_status": "PASS_NOT_APPLIED",
+      "negative_detail": "https://www.alensa.cz/emporio-armani-ea-1041-3094: no discount (baseline 4069.0 vs with-code 4069.0)",
+      "status": "FAIL",
+      "detail": "THRESHOLD VIOLATED: basket 948.0 CZK is below the min_basket_czk = 1000, but the discount engine applied -498.0 CZK anyway",
+      "duration_s": 108.5,
+      "diagnostics": null
+    },
+    {
+      "name": "500 Kč při nákupu nad 1000 Kč pro Crullé kompletní brýle",
+      "code": "jetojenvhlave500",
+      "product_url": "https://www.alensa.cz/crulle-tr1726-c4",
+      "expected_type": "fixed_amount",
+      "expected_value": 500.0,
+      "tolerance_pct": 1.0,
+      "baseline_czk": 997.0,
+      "observed_total_czk": 997.0,
+      "observed_discount_czk": 0.0,
+      "observed_discount_pct": 0.0,
+      "line_items": [
+        {
+          "url_slug": "crulle-tr1726-c4",
+          "name": "Crullé TR1726 C4",
+          "quantity": 1,
+          "original_unit_price_czk": 499.0,
+          "current_unit_price_czk": 499.0,
+          "is_discounted": false,
+          "discount_pct": 0.0,
+          "discount_czk": 0.0
+        },
+        {
+          "url_slug": "",
+          "name": "2x Brýlová čočka Adrial 1.5 (čirá)",
+          "quantity": 1,
+          "original_unit_price_czk": 498.0,
+          "current_unit_price_czk": 498.0,
+          "is_discounted": false,
+          "discount_pct": 0.0,
+          "discount_czk": 0.0
+        }
+      ],
+      "flash_text": "Slevový kód: jetojenvhlave500 Nesplnili jste podmínky pro získání slevového kódu",
+      "flash_check": "skipped",
+      "negative_status": "PASS_NOT_APPLIED",
+      "negative_detail": "https://www.alensa.cz/emporio-armani-ea-1041-3094: no discount (baseline 4069.0 vs with-code 4069.0)",
+      "status": "PASS",
+      "detail": "threshold correctly enforced: basket 997.0 CZK < min 1000 CZK, no discount applied",
+      "duration_s": 108.6,
+      "diagnostics": null
+    },
+    {
+      "name": "500 Kč při nákupu nad 1000 Kč pro Crullé kompletní brýle",
+      "code": "jetojenvhlave500",
+      "product_url": "https://www.alensa.cz/crulle-tr1616-c1",
+      "expected_type": "fixed_amount",
+      "expected_value": 500.0,
+      "tolerance_pct": 1.0,
+      "baseline_czk": 1489.0,
+      "observed_total_czk": 989.0,
+      "observed_discount_czk": 500.0,
+      "observed_discount_pct": 33.58,
+      "line_items": [
+        {
+          "url_slug": "crulle-tr1616-c1",
+          "name": "Crullé TR1616 C1",
+          "quantity": 1,
+          "original_unit_price_czk": 499.0,
+          "current_unit_price_czk": 499.0,
+          "is_discounted": false,
+          "discount_pct": 0.0,
+          "discount_czk": 0.0
+        },
+        {
+          "url_slug": "",
+          "name": "2x Brýlová čočka Adrial 1.6 (čirá)",
+          "quantity": 1,
+          "original_unit_price_czk": 990.0,
+          "current_unit_price_czk": 990.0,
+          "is_discounted": false,
+          "discount_pct": 0.0,
+          "discount_czk": 0.0
+        }
+      ],
+      "flash_text": "Slevový kód: jetojenvhlave500",
+      "flash_check": "skipped",
+      "negative_status": "PASS_NOT_APPLIED",
+      "negative_detail": "https://www.alensa.cz/emporio-armani-ea-1041-3094: no discount (baseline 4069.0 vs with-code 4069.0)",
+      "status": "PASS",
+      "detail": "basket-total: observed -500.0 CZK vs expected -500.0 CZK",
+      "duration_s": 109.0,
+      "diagnostics": null
+    },
+    {
+      "name": "500 Kč při nákupu nad 1000 Kč pro Crullé kompletní brýle",
+      "code": "jetojenvhlave500",
+      "product_url": "https://www.alensa.cz/crulle-calm-c4",
+      "expected_type": "fixed_amount",
+      "expected_value": 500.0,
+      "tolerance_pct": 1.0,
+      "baseline_czk": 997.0,
+      "observed_total_czk": 997.0,
+      "observed_discount_czk": 0.0,
+      "observed_discount_pct": 0.0,
+      "line_items": [
+        {
+          "url_slug": "crulle-calm-c4",
+          "name": "Crullé Calm C4",
+          "quantity": 1,
+          "original_unit_price_czk": 499.0,
+          "current_unit_price_czk": 499.0,
+          "is_discounted": false,
+          "discount_pct": 0.0,
+          "discount_czk": 0.0
+        },
+        {
+          "url_slug": "",
+          "name": "2x Brýlová čočka Adrial 1.5 (čirá)",
+          "quantity": 1,
+          "original_unit_price_czk": 498.0,
+          "current_unit_price_czk": 498.0,
+          "is_discounted": false,
+          "discount_pct": 0.0,
+          "discount_czk": 0.0
+        }
+      ],
+      "flash_text": "Slevový kód: jetojenvhlave500 Nesplnili jste podmínky pro získání slevového kódu",
+      "flash_check": "skipped",
+      "negative_status": "PASS_NOT_APPLIED",
+      "negative_detail": "https://www.alensa.cz/emporio-armani-ea-1041-3094: no discount (baseline 4069.0 vs with-code 4069.0)",
+      "status": "PASS",
+      "detail": "threshold correctly enforced: basket 997.0 CZK < min 1000 CZK, no discount applied",
+      "duration_s": 109.3,
+      "diagnostics": null
+    },
+    {
+      "name": "500 Kč při nákupu nad 1000 Kč pro Crullé kompletní brýle",
+      "code": "jetojenvhlave500",
+      "product_url": "https://www.alensa.cz/crulle-chill-c1",
+      "expected_type": "fixed_amount",
+      "expected_value": 500.0,
+      "tolerance_pct": 1.0,
+      "baseline_czk": 997.0,
+      "observed_total_czk": 997.0,
+      "observed_discount_czk": 0.0,
+      "observed_discount_pct": 0.0,
+      "line_items": [
+        {
+          "url_slug": "crulle-chill-c1",
+          "name": "Crullé Chill C1",
+          "quantity": 1,
+          "original_unit_price_czk": 499.0,
+          "current_unit_price_czk": 499.0,
+          "is_discounted": false,
+          "discount_pct": 0.0,
+          "discount_czk": 0.0
+        },
+        {
+          "url_slug": "",
+          "name": "2x Brýlová čočka Adrial 1.5 (čirá)",
+          "quantity": 1,
+          "original_unit_price_czk": 498.0,
+          "current_unit_price_czk": 498.0,
+          "is_discounted": false,
+          "discount_pct": 0.0,
+          "discount_czk": 0.0
+        }
+      ],
+      "flash_text": "Slevový kód: jetojenvhlave500 Nesplnili jste podmínky pro získání slevového kódu",
+      "flash_check": "skipped",
+      "negative_status": "PASS_NOT_APPLIED",
+      "negative_detail": "https://www.alensa.cz/emporio-armani-ea-1041-3094: no discount (baseline 4069.0 vs with-code 4069.0)",
+      "status": "PASS",
+      "detail": "threshold correctly enforced: basket 997.0 CZK < min 1000 CZK, no discount applied",
+      "duration_s": 114.7,
+      "diagnostics": null
+    },
+    {
+      "name": "500 Kč při nákupu nad 1000 Kč pro Crullé kompletní brýle",
+      "code": "jetojenvhlave500",
+      "product_url": "https://www.alensa.cz/crulle-tr1886-c2",
+      "expected_type": "fixed_amount",
+      "expected_value": 500.0,
+      "tolerance_pct": 1.0,
+      "baseline_czk": 1397.0,
+      "observed_total_czk": 897.0,
+      "observed_discount_czk": 500.0,
+      "observed_discount_pct": 35.79,
+      "line_items": [
+        {
+          "url_slug": "crulle-tr1886-c2",
+          "name": "Crullé TR1886 C2",
+          "quantity": 1,
+          "original_unit_price_czk": 899.0,
+          "current_unit_price_czk": 899.0,
+          "is_discounted": false,
+          "discount_pct": 0.0,
+          "discount_czk": 0.0
+        },
+        {
+          "url_slug": "",
+          "name": "2x Brýlová čočka Adrial 1.5 (čirá)",
+          "quantity": 1,
+          "original_unit_price_czk": 498.0,
+          "current_unit_price_czk": 498.0,
+          "is_discounted": false,
+          "discount_pct": 0.0,
+          "discount_czk": 0.0
+        }
+      ],
+      "flash_text": "Slevový kód: jetojenvhlave500",
+      "flash_check": "skipped",
+      "negative_status": "PASS_NOT_APPLIED",
+      "negative_detail": "https://www.alensa.cz/emporio-armani-ea-1041-3094: no discount (baseline 4069.0 vs with-code 4069.0)",
+      "status": "PASS",
+      "detail": "basket-total: observed -500.0 CZK vs expected -500.0 CZK",
+      "duration_s": 113.9,
+      "diagnostics": null
+    },
+    {
+      "name": "500 Kč při nákupu nad 1000 Kč pro Crullé kompletní brýle",
+      "code": "jetojenvhlave500",
+      "product_url": "https://www.alensa.cz/crulle-calm-c1",
+      "expected_type": "fixed_amount",
+      "expected_value": 500.0,
+      "tolerance_pct": 1.0,
+      "baseline_czk": 1397.0,
+      "observed_total_czk": 897.0,
+      "observed_discount_czk": 500.0,
+      "observed_discount_pct": 35.79,
+      "line_items": [
+        {
+          "url_slug": "crulle-calm-c1",
+          "name": "Crullé Calm C1",
+          "quantity": 1,
+          "original_unit_price_czk": 899.0,
+          "current_unit_price_czk": 899.0,
+          "is_discounted": false,
+          "discount_pct": 0.0,
+          "discount_czk": 0.0
+        },
+        {
+          "url_slug": "",
+          "name": "2x Brýlová čočka Adrial 1.5 (čirá)",
+          "quantity": 1,
+          "original_unit_price_czk": 498.0,
+          "current_unit_price_czk": 498.0,
+          "is_discounted": false,
+          "discount_pct": 0.0,
+          "discount_czk": 0.0
+        }
+      ],
+      "flash_text": "Slevový kód: jetojenvhlave500",
+      "flash_check": "skipped",
+      "negative_status": "PASS_NOT_APPLIED",
+      "negative_detail": "https://www.alensa.cz/emporio-armani-ea-1041-3094: no discount (baseline 4069.0 vs with-code 4069.0)",
+      "status": "PASS",
+      "detail": "basket-total: observed -500.0 CZK vs expected -500.0 CZK",
+      "duration_s": 110.3,
+      "diagnostics": null
+    },
+    {
+      "name": "500 Kč při nákupu nad 1000 Kč pro Crullé kompletní brýle",
+      "code": "jetojenvhlave500",
+      "product_url": "https://www.alensa.cz/crulle-tr1886-c4",
+      "expected_type": "fixed_amount",
+      "expected_value": 500.0,
+      "tolerance_pct": 1.0,
+      "baseline_czk": 1397.0,
+      "observed_total_czk": 897.0,
+      "observed_discount_czk": 500.0,
+      "observed_discount_pct": 35.79,
+      "line_items": [
+        {
+          "url_slug": "crulle-tr1886-c4",
+          "name": "Crullé TR1886 C4",
+          "quantity": 1,
+          "original_unit_price_czk": 899.0,
+          "current_unit_price_czk": 899.0,
+          "is_discounted": false,
+          "discount_pct": 0.0,
+          "discount_czk": 0.0
+        },
+        {
+          "url_slug": "",
+          "name": "2x Brýlová čočka Adrial 1.5 (čirá)",
+          "quantity": 1,
+          "original_unit_price_czk": 498.0,
+          "current_unit_price_czk": 498.0,
+          "is_discounted": false,
+          "discount_pct": 0.0,
+          "discount_czk": 0.0
+        }
+      ],
+      "flash_text": "Slevový kód: jetojenvhlave500",
+      "flash_check": "skipped",
+      "negative_status": "PASS_NOT_APPLIED",
+      "negative_detail": "https://www.alensa.cz/emporio-armani-ea-1041-3094: no discount (baseline 4069.0 vs with-code 4069.0)",
+      "status": "PASS",
+      "detail": "basket-total: observed -500.0 CZK vs expected -500.0 CZK",
+      "duration_s": 109.2,
+      "diagnostics": null
+    },
+    {
+      "name": "500 Kč při nákupu nad 1000 Kč pro Crullé kompletní brýle",
+      "code": "jetojenvhlave500",
+      "product_url": "https://www.alensa.cz/crulle-tr1726-c5",
+      "expected_type": "fixed_amount",
+      "expected_value": 500.0,
+      "tolerance_pct": 1.0,
+      "baseline_czk": 1397.0,
+      "observed_total_czk": 897.0,
+      "observed_discount_czk": 500.0,
+      "observed_discount_pct": 35.79,
+      "line_items": [
+        {
+          "url_slug": "crulle-tr1726-c5",
+          "name": "Crullé TR1726 C5",
+          "quantity": 1,
+          "original_unit_price_czk": 899.0,
+          "current_unit_price_czk": 899.0,
+          "is_discounted": false,
+          "discount_pct": 0.0,
+          "discount_czk": 0.0
+        },
+        {
+          "url_slug": "",
+          "name": "2x Brýlová čočka Adrial 1.5 (čirá)",
+          "quantity": 1,
+          "original_unit_price_czk": 498.0,
+          "current_unit_price_czk": 498.0,
+          "is_discounted": false,
+          "discount_pct": 0.0,
+          "discount_czk": 0.0
+        }
+      ],
+      "flash_text": "Slevový kód: jetojenvhlave500",
+      "flash_check": "skipped",
+      "negative_status": "PASS_NOT_APPLIED",
+      "negative_detail": "https://www.alensa.cz/emporio-armani-ea-1041-3094: no discount (baseline 4069.0 vs with-code 4069.0)",
+      "status": "PASS",
+      "detail": "basket-total: observed -500.0 CZK vs expected -500.0 CZK",
+      "duration_s": 110.5,
+      "diagnostics": null
+    },
+    {
+      "name": "500 Kč při nákupu nad 1000 Kč pro Crullé kompletní brýle",
+      "code": "jetojenvhlave500",
+      "product_url": "https://www.alensa.cz/crulle-unwind-c1",
+      "expected_type": "fixed_amount",
+      "expected_value": 500.0,
+      "tolerance_pct": 1.0,
+      "baseline_czk": 1397.0,
+      "observed_total_czk": 897.0,
+      "observed_discount_czk": 500.0,
+      "observed_discount_pct": 35.79,
+      "line_items": [
+        {
+          "url_slug": "crulle-unwind-c1",
+          "name": "Crullé Unwind C1",
+          "quantity": 1,
+          "original_unit_price_czk": 899.0,
+          "current_unit_price_czk": 899.0,
+          "is_discounted": false,
+          "discount_pct": 0.0,
+          "discount_czk": 0.0
+        },
+        {
+          "url_slug": "",
+          "name": "2x Brýlová čočka Adrial 1.5 (čirá)",
+          "quantity": 1,
+          "original_unit_price_czk": 498.0,
+          "current_unit_price_czk": 498.0,
+          "is_discounted": false,
+          "discount_pct": 0.0,
+          "discount_czk": 0.0
+        }
+      ],
+      "flash_text": "Slevový kód: jetojenvhlave500",
+      "flash_check": "skipped",
+      "negative_status": "PASS_NOT_APPLIED",
+      "negative_detail": "https://www.alensa.cz/emporio-armani-ea-1041-3094: no discount (baseline 4069.0 vs with-code 4069.0)",
+      "status": "PASS",
+      "detail": "basket-total: observed -500.0 CZK vs expected -500.0 CZK",
+      "duration_s": 109.5,
+      "diagnostics": null
+    }
+  ]
+}

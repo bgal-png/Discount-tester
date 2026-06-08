@@ -1,0 +1,13 @@
+Run 20260528_141040 — alensa.cz
+Summary: {'PASS': 9, 'FAIL': 1, 'NOT_APPLIED': 0, 'ERROR': 0, 'SKIPPED_EXPIRED': 0}
+
+[FAIL       ] jetojenvhlave500 (108.5s) — THRESHOLD VIOLATED: basket 948.0 CZK is below the min_basket_czk = 1000, but the discount engine applied -498.0 CZK anyway
+[PASS       ] jetojenvhlave500 (108.6s) — threshold correctly enforced: basket 997.0 CZK < min 1000 CZK, no discount applied
+[PASS       ] jetojenvhlave500 (109.0s) — basket-total: observed -500.0 CZK vs expected -500.0 CZK
+[PASS       ] jetojenvhlave500 (109.3s) — threshold correctly enforced: basket 997.0 CZK < min 1000 CZK, no discount applied
+[PASS       ] jetojenvhlave500 (114.7s) — threshold correctly enforced: basket 997.0 CZK < min 1000 CZK, no discount applied
+[PASS       ] jetojenvhlave500 (113.9s) — basket-total: observed -500.0 CZK vs expected -500.0 CZK
+[PASS       ] jetojenvhlave500 (110.3s) — basket-total: observed -500.0 CZK vs expected -500.0 CZK
+[PASS       ] jetojenvhlave500 (109.2s) — basket-total: observed -500.0 CZK vs expected -500.0 CZK
+[PASS       ] jetojenvhlave500 (110.5s) — basket-total: observed -500.0 CZK vs expected -500.0 CZK
+[PASS       ] jetojenvhlave500 (109.5s) — basket-total: observed -500.0 CZK vs expected -500.0 CZK

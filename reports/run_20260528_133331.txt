@@ -1,0 +1,13 @@
+Run 20260528_133331 — alensa.cz
+Summary: {'PASS': 10, 'FAIL': 0, 'NOT_APPLIED': 0, 'ERROR': 0, 'SKIPPED_EXPIRED': 0}
+
+[PASS       ] 300BILLA211676  (17.4s) — threshold correctly enforced: basket 179.0 CZK < min 500 CZK, no discount applied
+[PASS       ] 300BILLA211676  (17.0s) — threshold correctly enforced: basket 179.0 CZK < min 500 CZK, no discount applied
+[PASS       ] 300BILLA211676  (15.8s) — threshold correctly enforced: basket 229.0 CZK < min 500 CZK, no discount applied
+[PASS       ] 300BILLA211676  (15.9s) — threshold correctly enforced: basket 229.0 CZK < min 500 CZK, no discount applied
+[PASS       ] 300BILLA211676  (15.9s) — threshold correctly enforced: basket 229.0 CZK < min 500 CZK, no discount applied
+[PASS       ] 300BILLA211676  (15.9s) — threshold correctly enforced: basket 229.0 CZK < min 500 CZK, no discount applied
+[PASS       ] 300BILLA211676  (17.4s) — basket-total: observed -300.0 CZK vs expected -300.0 CZK
+[PASS       ] 300BILLA211676  (16.9s) — basket-total: observed -300.0 CZK vs expected -300.0 CZK
+[PASS       ] 300BILLA211676  (16.2s) — threshold correctly enforced: basket 229.0 CZK < min 500 CZK, no discount applied
+[PASS       ] 300BILLA211676  (55.9s) — basket-total: observed -300.0 CZK vs expected -300.0 CZK

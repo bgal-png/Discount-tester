@@ -1,0 +1,6 @@
+Run 20260528_135520 — alensa.cz
+Summary: {'PASS': 3, 'FAIL': 0, 'NOT_APPLIED': 0, 'ERROR': 0, 'SKIPPED_EXPIRED': 0}
+
+[PASS       ] jetojenvhlave500 (108.9s) — basket-total: observed -500.0 CZK vs expected -500.0 CZK
+[PASS       ] jetojenvhlave500 (108.5s) — basket-total: observed -500.0 CZK vs expected -500.0 CZK
+[PASS       ] jetojenvhlave500 (161.8s) — basket-total: observed -500.0 CZK vs expected -500.0 CZK
