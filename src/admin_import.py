@@ -45,13 +45,17 @@ KNOWN_BRANDS = [
 ]
 
 # Product-type hint words (Czech) appearing in name / info text.
+# IMPORTANT: order matters — more specific phrases are checked first because
+# they're substrings of less specific ones. "sluneční brýle" contains
+# "brýle"; "brýlová skla" contains "brýl...". So sunglasses + lenses must be
+# tested before plain glasses, or they'd be mis-classified.
 TYPE_HINTS = [
-    (("brýle", "brýlové obruby", "obruby", "obrouček", "dioptrické"), "glasses"),
-    (("sluneční",), "sunglasses"),
-    (("čočky", "kontaktní"), "contact_lenses"),
+    (("sluneční brýle", "sluneční"), "sunglasses"),
+    (("brýlová skla", "čočky do brýlí", "brýlové čočky"), "lenses_for_glasses"),
+    (("kontaktní čočky", "kontaktní"), "contact_lenses"),
+    (("oční kapky", "kapky"), "eye_drops"),
     (("roztok", "roztoky"), "solutions"),
-    (("kapky", "oční kapky"), "eye_drops"),
-    (("brýlová skla", "skla", "čočky do brýlí"), "lenses_for_glasses"),
+    (("dioptrické brýle", "brýlové obruby", "obruby", "obrouč", "brýle"), "glasses"),
 ]
 
 
@@ -138,9 +142,8 @@ def _guess_brands(*texts: str) -> list[str]:
 
 def _guess_product_type(*texts: str) -> Optional[str]:
     hay = " ".join(_strip_tags(t) for t in texts if t).lower()
-    # lenses_for_glasses is more specific than glasses — check it first.
-    ordered = sorted(TYPE_HINTS, key=lambda x: x[1] != "lenses_for_glasses")
-    for words, ptype in ordered:
+    # TYPE_HINTS is pre-ordered most-specific-first; first match wins.
+    for words, ptype in TYPE_HINTS:
         if any(w in hay for w in words):
             return ptype
     return None
